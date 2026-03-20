@@ -1,0 +1,12 @@
+base_config: twc_base.yaml
+
+system_model:
+  num_re_sim: 8
+
+experiment:
+  num_batches: 4
+
+sweep:
+  enabled: true
+  variable: snr_db
+  values: [5.0]

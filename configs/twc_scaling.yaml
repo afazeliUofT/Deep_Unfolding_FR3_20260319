@@ -1,0 +1,9 @@
+base_config: twc_base.yaml
+
+experiment:
+  num_batches: 4
+
+sweep:
+  enabled: true
+  variable: snr_db
+  values: [5.0]
