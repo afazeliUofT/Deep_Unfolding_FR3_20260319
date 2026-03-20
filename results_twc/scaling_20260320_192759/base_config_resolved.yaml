@@ -1,0 +1,160 @@
+raw:
+  base_config: default.yaml
+  reproducibility:
+    seed: 7
+    deterministic_tf: true
+    precision: single
+  system_model:
+    num_re_sim: 4
+    simulate_full_band: false
+    bs_total_tx_power_dbm: 49.0
+    num_re_total: 273
+    subcarrier_spacing_hz: 30000.0
+  noise:
+    extra_noise_db: 0.0
+    noise_figure_db: 7.0
+  topology:
+    num_ut_per_sector: 6
+    cell_radius_m: 250.0
+    min_ue_distance_m: 20.0
+  pcp:
+    num_sites: 7
+    sectors_per_site: 3
+    background_sites_fraction: 0.15
+    ue_cluster_radius_m: 100.0
+    hotspot_jitter_sigma_m: 350.0
+    bs_cluster_sigma_m: 900.0
+    intersite_distance_m: 500.0
+  channel_model:
+    num_bs_ant: 32
+    num_ut_ant: 4
+    carrier_frequency_ghz: 7.0
+    shadow_fading_std_db: 6.0
+    rician_k_db: 0.0
+  fixed_service:
+    enabled: true
+    num_receivers: 12
+    in_target_db: -10.0
+    sweep_override_i_max: none
+    i_max_dbm: -110.0
+  antenna:
+    correlation: steering_rank1
+  receiver:
+    name: wmmse
+    wmmse:
+      num_iterations: 20
+      fs_enforcement: budget_dual
+      fs_lambda_search: false
+      dual_step_mu: 0.02
+      dual_step_lambda: 0.1
+      damping_w: 0.9
+      ridge_regularization: 1.0e-09
+      convergence_tol: 1.0e-06
+      lambda_update_mode: ratio
+      aggressive_fs_nulling_reg: 1.0e-06
+  experiment:
+    batch_size: 1
+    num_batches: 4
+    freeze_topology: true
+    tf_compile: false
+  sweep:
+    enabled: true
+    variable: snr_db
+    values:
+    - 5.0
+  output:
+    results_root: results
+    experiment_name: baseline_wmmse
+    overwrite: false
+  plotting:
+    enabled: true
+    format: png
+    dpi: 220
+  twc:
+    project_root: .
+    output_root: results_twc
+    checkpoint_root: results_twc/checkpoints
+    coverage_rate_threshold_bpshz: 1.0
+    coverage_sinr_threshold_db: 0.0
+    pf:
+      num_slots: 6
+      ema_beta: 0.9
+      weight_clip_min: 0.1
+      weight_clip_max: 10.0
+      init_avg_rate: 1.0
+    cognitive_mask:
+      active_fraction: 0.5
+      min_active_tones: 1
+      temperature: 1.0
+      protect_top_l: 3
+    hybrid:
+      null_when_ratio_exceeds: 0.95
+    unfolding:
+      num_layers: 8
+      init_damping: 0.85
+      init_dual_step_mu: 0.02
+      init_dual_step_lambda: 0.1
+    training:
+      num_steps: 300
+      log_every: 10
+      save_every: 25
+      learning_rate: 0.005
+      grad_clip_norm: 5.0
+      snr_db_choices:
+      - -5.0
+      - 0.0
+      - 5.0
+      - 10.0
+      lambda_power: 25.0
+      lambda_fs: 25.0
+      lambda_smooth: 0.01
+      random_weight_sigma: 0.7
+    fer:
+      modulation_orders:
+      - 2
+      - 4
+      code_rates:
+      - 0.3
+      - 0.5
+      k_bits: 1024
+      num_frames_per_point: 128
+      max_frame_errors: 100
+    scaling:
+      num_bs_ant_values:
+      - 16
+      - 32
+      - 64
+      num_ut_per_sector_values:
+      - 4
+      - 6
+      - 8
+      sweep_value_db: 5.0
+      num_batches: 4
+    selectivity:
+      tau_rms_ns_values:
+      - 20.0
+      - 50.0
+      - 100.0
+      - 200.0
+      - 400.0
+      sweep_value_db: 5.0
+      num_batches: 4
+derived:
+  num_bs: 21
+  num_ut: 126
+  u_per_bs: 6
+  num_re_total: 273
+  num_re_sim: 4
+  re_scaling: 68.25
+  bs_total_tx_power_watt: 0.07943282347242814
+  ue_noise_re_watt: 5.985786944906651e-19
+  tf_precision: single
+  carrier_frequency_ghz: 7.0
+  carrier_frequency_hz: 7000000000.0
+  num_fs: 12
+  config_dir: /home/rsadve1/Deep_Unfolding_FR3_20260319/configs
+  config_path: /home/rsadve1/Deep_Unfolding_FR3_20260319/configs/twc_scaling.yaml
+  twc_paths:
+    project_root: /home/rsadve1/Deep_Unfolding_FR3_20260319
+    output_root: results_twc
+    checkpoint_root: results_twc/checkpoints
