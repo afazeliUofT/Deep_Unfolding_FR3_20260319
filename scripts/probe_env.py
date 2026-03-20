@@ -21,8 +21,9 @@ try:
     import _repo_bootstrap as _rb  # type: ignore
 
     ROOT = _rb.bootstrap()
-except Exception:
-    os.environ.setdefault("FR3_REPO_ROOT", str(ROOT))
+except Exception as exc:
+    print(f"BOOTSTRAP_FAIL {type(exc).__name__}: {exc}")
+    raise
 
 
 def _version(name: str) -> str:
@@ -47,6 +48,7 @@ def main() -> None:
     print(f"REPO_ROOT {ROOT}")
     print(f"PYTHONPATH_ENV {os.environ.get('PYTHONPATH', '')}")
     print(f"FR3_REPO_ROOT_ENV {os.environ.get('FR3_REPO_ROOT', '')}")
+    print(f"SITECUSTOMIZE_LOADED {'sitecustomize' in sys.modules}")
     print(
         "REPO_PATHS "
         + json.dumps(
@@ -56,6 +58,8 @@ def main() -> None:
                 "scripts_exists": (ROOT / "scripts").exists(),
                 "fr3_sim_exists": (ROOT / "src" / "fr3_sim").exists(),
                 "fr3_twc_exists": (ROOT / "src" / "fr3_twc").exists(),
+                "fr3_sim_init_exists": (ROOT / "src" / "fr3_sim" / "__init__.py").exists(),
+                "fr3_twc_init_exists": (ROOT / "src" / "fr3_twc" / "__init__.py").exists(),
             },
             sort_keys=True,
         )
@@ -83,8 +87,8 @@ def main() -> None:
             origin = _origin(name)
             version = _version(name.split(".")[0]) if "." not in name else "submodule"
             print(f"IMPORT_OK {name} {version} {origin}")
-        except Exception as e:
-            print(f"IMPORT_FAIL {name} {type(e).__name__}: {e}")
+        except Exception as exc:
+            print(f"IMPORT_FAIL {name} {type(exc).__name__}: {exc}")
             failed.append(name)
 
     if failed:

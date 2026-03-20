@@ -8,13 +8,27 @@ VENV_PATH="$ROOT/$VENV_NAME"
 module purge >/dev/null 2>&1 || true
 module load python/3.10 >/dev/null 2>&1 || module load python >/dev/null 2>&1 || true
 
+if [[ ! -f "$ROOT/src/fr3_sim/__init__.py" ]]; then
+  echo "MISSING_REPO_FILE $ROOT/src/fr3_sim/__init__.py"
+  exit 2
+fi
+if [[ ! -f "$ROOT/src/fr3_twc/__init__.py" ]]; then
+  echo "MISSING_REPO_FILE $ROOT/src/fr3_twc/__init__.py"
+  exit 2
+fi
+if [[ ! -f "$ROOT/scripts/sitecustomize.py" ]]; then
+  echo "MISSING_REPO_FILE $ROOT/scripts/sitecustomize.py"
+  exit 2
+fi
+
 if [[ -d "$VENV_PATH" ]]; then
-    python -m venv --clear "$VENV_PATH"
+  python -m venv --clear "$VENV_PATH"
 else
-    python -m venv "$VENV_PATH"
+  python -m venv "$VENV_PATH"
 fi
 
 source "$VENV_PATH/bin/activate"
+export PYTHONNOUSERSITE=1
 python -m pip install --upgrade pip setuptools wheel
 python -m pip uninstall -y deep-unfolding-fr3-twc sionna sionna-no-rt >/dev/null 2>&1 || true
 python -m pip install -r "$ROOT/requirements/requirements_twc.txt"
