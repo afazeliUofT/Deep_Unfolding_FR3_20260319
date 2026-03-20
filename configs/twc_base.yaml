@@ -17,13 +17,14 @@ noise:
 topology:
   # Smaller but still multi-cell reference geometry for TWC comparisons.
   num_ut_per_sector: 6
-  pcp:
-    num_sites: 7
-    sectors_per_site: 3
-    background_sites_fraction: 0.15
-    ue_cluster_radius_m: 100.0
-    hotspot_jitter_sigma_m: 350.0
-    bs_cluster_sigma_m: 900.0
+
+pcp:
+  num_sites: 7
+  sectors_per_site: 3
+  background_sites_fraction: 0.15
+  ue_cluster_radius_m: 100.0
+  hotspot_jitter_sigma_m: 350.0
+  bs_cluster_sigma_m: 900.0
 
 channel_model:
   num_bs_ant: 32
@@ -34,8 +35,9 @@ fixed_service:
   num_receivers: 12
   in_target_db: -10.0
   sweep_override_i_max: none
-  antenna:
-    correlation: steering_rank1
+
+antenna:
+  correlation: steering_rank1
 
 receiver:
   name: wmmse

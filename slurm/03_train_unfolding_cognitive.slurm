@@ -11,4 +11,4 @@ set -euo pipefail
 ROOT=/home/rsadve1/Deep_Unfolding_FR3_20260319
 cd "$ROOT"
 mkdir -p logs
-bash "$ROOT/scripts/run_train_unfolding_job.sh" cognitive
+bash "$ROOT/scripts/run_train_unfolding_job.sh" cognitive venv_fr3_twc

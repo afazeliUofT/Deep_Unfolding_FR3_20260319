@@ -1,0 +1,81 @@
+reproducibility:
+  seed: 1
+  deterministic_tf: true
+  precision: "single"
+
+system_model:
+  num_re_total: 273
+  num_re_sim: 4
+  subcarrier_spacing_hz: 30000.0
+  bs_total_tx_power_dbm: 49.0
+  simulate_full_band: false
+
+noise:
+  noise_figure_db: 7.0
+  extra_noise_db: 0.0
+
+topology:
+  num_ut_per_sector: 4
+  cell_radius_m: 250.0
+  min_ue_distance_m: 20.0
+
+pcp:
+  num_sites: 7
+  sectors_per_site: 3
+  intersite_distance_m: 500.0
+  background_sites_fraction: 0.15
+  ue_cluster_radius_m: 100.0
+  hotspot_jitter_sigma_m: 350.0
+  bs_cluster_sigma_m: 900.0
+
+channel_model:
+  carrier_frequency_ghz: 7.0
+  num_bs_ant: 16
+  num_ut_ant: 2
+  shadow_fading_std_db: 6.0
+  rician_k_db: 0.0
+
+fixed_service:
+  enabled: true
+  num_receivers: 8
+  i_max_dbm: -110.0
+  in_target_db: -10.0
+  sweep_override_i_max: none
+
+antenna:
+  correlation: steering_rank1
+
+receiver:
+  name: wmmse
+  wmmse:
+    num_iterations: 20
+    fs_enforcement: budget_dual
+    fs_lambda_search: false
+    dual_step_mu: 0.02
+    dual_step_lambda: 0.10
+    damping_w: 0.90
+    ridge_regularization: 1.0e-9
+    convergence_tol: 1.0e-6
+    lambda_update_mode: ratio
+    aggressive_fs_nulling_reg: 1.0e-6
+
+experiment:
+  batch_size: 1
+  num_batches: 4
+  freeze_topology: true
+  tf_compile: false
+
+sweep:
+  enabled: true
+  variable: snr_db
+  values: [0.0]
+
+output:
+  results_root: results
+  experiment_name: baseline_wmmse
+  overwrite: false
+
+plotting:
+  enabled: true
+  format: png
+  dpi: 220

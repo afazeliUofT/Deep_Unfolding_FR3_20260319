@@ -58,8 +58,8 @@ def main() -> None:
                 "scripts_exists": (ROOT / "scripts").exists(),
                 "fr3_sim_exists": (ROOT / "src" / "fr3_sim").exists(),
                 "fr3_twc_exists": (ROOT / "src" / "fr3_twc").exists(),
-                "fr3_sim_init_exists": (ROOT / "src" / "fr3_sim" / "__init__.py").exists(),
-                "fr3_twc_init_exists": (ROOT / "src" / "fr3_twc" / "__init__.py").exists(),
+                "default_config_exists": (ROOT / "configs" / "default.yaml").exists(),
+                "twc_base_exists": (ROOT / "configs" / "twc_base.yaml").exists(),
             },
             sort_keys=True,
         )
@@ -76,8 +76,10 @@ def main() -> None:
     failed = []
     for name in [
         "fr3_sim",
+        "fr3_sim.config",
         "fr3_sim.channel",
         "fr3_sim.topology",
+        "fr3_sim.processing",
         "fr3_twc",
         "fr3_twc.unfolding",
         "tensorflow",
@@ -87,9 +89,28 @@ def main() -> None:
             origin = _origin(name)
             version = _version(name.split(".")[0]) if "." not in name else "submodule"
             print(f"IMPORT_OK {name} {version} {origin}")
-        except Exception as exc:
-            print(f"IMPORT_FAIL {name} {type(exc).__name__}: {exc}")
+        except Exception as e:
+            print(f"IMPORT_FAIL {name} {type(e).__name__}: {e}")
             failed.append(name)
+
+    try:
+        from fr3_twc.config import load_twc_config  # type: ignore
+
+        cfg = load_twc_config(ROOT / "configs" / "twc_base.yaml")
+        print(
+            "CONFIG_OK "
+            + json.dumps(
+                {
+                    "num_bs": int(cfg.derived["num_bs"]),
+                    "num_ut": int(cfg.derived["num_ut"]),
+                    "num_re_sim": int(cfg.derived["num_re_sim"]),
+                },
+                sort_keys=True,
+            )
+        )
+    except Exception as e:
+        print(f"CONFIG_FAIL {type(e).__name__}: {e}")
+        failed.append("config")
 
     if failed:
         raise SystemExit(1)

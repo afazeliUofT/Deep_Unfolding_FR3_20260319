@@ -28,9 +28,7 @@ def _origin_matches(module: ModuleType, expected_init: Path) -> bool:
 def _load_package_from_dir(name: str, package_dir: Path) -> ModuleType:
     init_py = package_dir / "__init__.py"
     if not init_py.exists():
-        raise ModuleNotFoundError(
-            f"Local package '{name}' is missing expected file: {init_py}"
-        )
+        raise ModuleNotFoundError(f"Local package '{name}' is missing expected file: {init_py}")
 
     existing = sys.modules.get(name)
     if existing is not None and _origin_matches(existing, init_py):
@@ -66,10 +64,6 @@ def bootstrap() -> Path:
         _prepend(path)
 
     os.environ.setdefault("FR3_REPO_ROOT", str(root))
-
-    # Force local packages into sys.modules if normal import resolution is still flaky
-    # on the cluster. This directly addresses the observed Narval failure:
-    # ModuleNotFoundError: No module named 'fr3_sim'.
     _ensure_local_package("fr3_sim", root)
     _ensure_local_package("fr3_twc", root)
     return root
