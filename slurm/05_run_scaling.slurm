@@ -14,6 +14,6 @@ mkdir -p logs
 module purge >/dev/null 2>&1 || true
 module load python/3.10 cuda >/dev/null 2>&1 || module load python cuda >/dev/null 2>&1 || true
 source "$ROOT/venv_fr3_twc/bin/activate"
-export PYTHONPATH="$ROOT/src:$ROOT:${PYTHONPATH:-}"
+export PYTHONPATH="$ROOT/scripts:$ROOT/src:$ROOT:${PYTHONPATH:-}"
 export TF_FORCE_GPU_ALLOW_GROWTH=true
-python scripts/run_scaling_suite.py --config configs/twc_scaling.yaml
+python -u scripts/run_scaling_suite.py --config configs/twc_scaling.yaml

@@ -11,10 +11,12 @@ module load python/3.10 >/dev/null 2>&1 || module load python >/dev/null 2>&1 ||
 python -m venv "$VENV_PATH"
 source "$VENV_PATH/bin/activate"
 python -m pip install --upgrade pip setuptools wheel
+python -m pip uninstall -y sionna sionna-no-rt >/dev/null 2>&1 || true
 python -m pip install -r "$ROOT/requirements/requirements_twc.txt"
+python -m pip install -e "$ROOT"
 
-export PYTHONPATH="$ROOT/src:$ROOT:${PYTHONPATH:-}"
-python "$ROOT/scripts/probe_env.py" || true
+export PYTHONPATH="$ROOT/scripts:$ROOT/src:$ROOT:${PYTHONPATH:-}"
+python "$ROOT/scripts/probe_env.py"
 python - <<'PY'
 import sys
 print('VENV_READY', sys.prefix)

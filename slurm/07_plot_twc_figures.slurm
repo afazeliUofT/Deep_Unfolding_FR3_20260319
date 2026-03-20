@@ -13,5 +13,5 @@ mkdir -p logs
 module purge >/dev/null 2>&1 || true
 module load python/3.10 >/dev/null 2>&1 || module load python >/dev/null 2>&1 || true
 source "$ROOT/venv_fr3_twc/bin/activate"
-export PYTHONPATH="$ROOT/src:$ROOT:${PYTHONPATH:-}"
-python scripts/plot_twc_figures.py --output-root results_twc
+export PYTHONPATH="$ROOT/scripts:$ROOT/src:$ROOT:${PYTHONPATH:-}"
+python -u scripts/plot_twc_figures.py --output-root results_twc

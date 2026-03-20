@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import _bootstrap  # noqa: F401
+
 import argparse
 import shutil
 from pathlib import Path
