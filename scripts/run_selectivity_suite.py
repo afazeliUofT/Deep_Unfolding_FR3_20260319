@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-import _bootstrap  # noqa: F401
+import _repo_bootstrap as _rb
+
+_rb.bootstrap()
 
 import argparse
 from pathlib import Path
