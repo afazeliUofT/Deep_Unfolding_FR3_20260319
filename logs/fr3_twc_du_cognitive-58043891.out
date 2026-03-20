@@ -1,0 +1,20 @@
+TRAIN_JOB variant=cognitive root=/home/rsadve1/Deep_Unfolding_FR3_20260319 venv=venv_fr3_twc
+2026-03-20 13:45:25.291447: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:485] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2026-03-20 13:45:25.412100: E external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:8454] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2026-03-20 13:45:25.451107: E external/local_xla/xla/stream_executor/cuda/cuda_blas.cc:1452] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+CWD /home/rsadve1/Deep_Unfolding_FR3_20260319
+PYTHON_EXECUTABLE /home/rsadve1/Deep_Unfolding_FR3_20260319/venv_fr3_twc/bin/python
+PYTHON_PREFIX /home/rsadve1/Deep_Unfolding_FR3_20260319/venv_fr3_twc
+REPO_ROOT /home/rsadve1/Deep_Unfolding_FR3_20260319
+PYTHONPATH_ENV /home/rsadve1/Deep_Unfolding_FR3_20260319/scripts:/home/rsadve1/Deep_Unfolding_FR3_20260319/src:/home/rsadve1/Deep_Unfolding_FR3_20260319:/cvmfs/soft.computecanada.ca/easybuild/python/site-packages:/cvmfs/soft.computecanada.ca/custom/python/site-packages
+FR3_REPO_ROOT_ENV /home/rsadve1/Deep_Unfolding_FR3_20260319
+REPO_PATHS {"fr3_sim_exists": false, "fr3_twc_exists": true, "root_exists": true, "scripts_exists": true, "src_exists": true}
+PTH_FILES ["/home/rsadve1/Deep_Unfolding_FR3_20260319/venv_fr3_twc/lib/python3.10/site-packages/fr3_repo_paths.pth"]
+SYS_PATH_HEAD ["/home/rsadve1/Deep_Unfolding_FR3_20260319/scripts", "/home/rsadve1/Deep_Unfolding_FR3_20260319/scripts", "/home/rsadve1/Deep_Unfolding_FR3_20260319/src", "/home/rsadve1/Deep_Unfolding_FR3_20260319", "/cvmfs/soft.computecanada.ca/easybuild/python/site-packages", "/cvmfs/soft.computecanada.ca/custom/python/site-packages", "/cvmfs/soft.computecanada.ca/easybuild/software/2023/x86-64-v3/Compiler/gcccore/python/3.10.13/lib/python310.zip", "/cvmfs/soft.computecanada.ca/easybuild/software/2023/x86-64-v3/Compiler/gcccore/python/3.10.13/lib/python3.10", "/cvmfs/soft.computecanada.ca/easybuild/software/2023/x86-64-v3/Compiler/gcccore/python/3.10.13/lib/python3.10/lib-dynload", "/home/rsadve1/Deep_Unfolding_FR3_20260319/venv_fr3_twc/lib/python3.10/site-packages"]
+IMPORT_FAIL fr3_sim ModuleNotFoundError: No module named 'fr3_sim'
+IMPORT_FAIL fr3_sim.channel ModuleNotFoundError: No module named 'fr3_sim'
+IMPORT_FAIL fr3_sim.topology ModuleNotFoundError: No module named 'fr3_sim'
+IMPORT_OK fr3_twc n/a /home/rsadve1/Deep_Unfolding_FR3_20260319/src/fr3_twc/__init__.py
+IMPORT_OK fr3_twc.unfolding submodule /home/rsadve1/Deep_Unfolding_FR3_20260319/src/fr3_twc/unfolding.py
+IMPORT_OK tensorflow 2.17.0 /home/rsadve1/Deep_Unfolding_FR3_20260319/venv_fr3_twc/lib/python3.10/site-packages/tensorflow/__init__.py
+IMPORT_OK sionna 1.2.1 /home/rsadve1/Deep_Unfolding_FR3_20260319/venv_fr3_twc/lib/python3.10/site-packages/sionna/__init__.py

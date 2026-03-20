@@ -10,9 +10,19 @@ from pathlib import Path
 
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
-import _repo_bootstrap as _rb
+SCRIPT_DIR = Path(__file__).resolve().parent
+ROOT = SCRIPT_DIR.parent
+for path in (ROOT, ROOT / "src", ROOT / "scripts"):
+    s = str(path)
+    if path.exists() and s not in sys.path:
+        sys.path.insert(0, s)
 
-ROOT = _rb.bootstrap()
+try:
+    import _repo_bootstrap as _rb  # type: ignore
+
+    ROOT = _rb.bootstrap()
+except Exception:
+    os.environ.setdefault("FR3_REPO_ROOT", str(ROOT))
 
 
 def _version(name: str) -> str:
@@ -31,9 +41,12 @@ def _origin(name: str) -> str:
 
 
 def main() -> None:
+    print(f"CWD {Path.cwd()}")
     print(f"PYTHON_EXECUTABLE {sys.executable}")
     print(f"PYTHON_PREFIX {sys.prefix}")
     print(f"REPO_ROOT {ROOT}")
+    print(f"PYTHONPATH_ENV {os.environ.get('PYTHONPATH', '')}")
+    print(f"FR3_REPO_ROOT_ENV {os.environ.get('FR3_REPO_ROOT', '')}")
     print(
         "REPO_PATHS "
         + json.dumps(
@@ -47,13 +60,14 @@ def main() -> None:
             sort_keys=True,
         )
     )
-    site_pkgs = []
+
+    pth_files = []
     for p in site.getsitepackages():
         pth = Path(p) / "fr3_repo_paths.pth"
         if pth.exists():
-            site_pkgs.append(str(pth))
-    print("PTH_FILES " + json.dumps(site_pkgs))
-    print("SYS_PATH_HEAD " + json.dumps(sys.path[:10]))
+            pth_files.append(str(pth))
+    print("PTH_FILES " + json.dumps(pth_files))
+    print("SYS_PATH_HEAD " + json.dumps(sys.path[:12]))
 
     failed = []
     for name in [
