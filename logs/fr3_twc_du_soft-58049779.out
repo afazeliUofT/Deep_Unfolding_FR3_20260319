@@ -1,7 +1,7 @@
 TRAIN_JOB variant=soft root=/home/rsadve1/Deep_Unfolding_FR3_20260319 venv=venv_fr3_twc
-2026-03-20 13:45:22.673022: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:485] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
-2026-03-20 13:45:22.830505: E external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:8454] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
-2026-03-20 13:45:22.888313: E external/local_xla/xla/stream_executor/cuda/cuda_blas.cc:1452] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2026-03-20 14:35:15.272143: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:485] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2026-03-20 14:35:15.441063: E external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:8454] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2026-03-20 14:35:15.496838: E external/local_xla/xla/stream_executor/cuda/cuda_blas.cc:1452] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
 CWD /home/rsadve1/Deep_Unfolding_FR3_20260319
 PYTHON_EXECUTABLE /home/rsadve1/Deep_Unfolding_FR3_20260319/venv_fr3_twc/bin/python
 PYTHON_PREFIX /home/rsadve1/Deep_Unfolding_FR3_20260319/venv_fr3_twc
