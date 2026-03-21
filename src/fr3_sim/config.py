@@ -168,7 +168,8 @@ def _validate_minimum(cfg: Dict[str, Any]) -> None:
 
 
 def _dbm_to_watt(dbm: float) -> float:
-    return 1e-3 * (10.0 ** ((float(dbm) - 30.0) / 10.0))
+    # Correct conversion: P[W] = 10^((P[dBm]-30)/10).
+    return 10.0 ** ((float(dbm) - 30.0) / 10.0)
 
 
 def _derive(cfg: Dict[str, Any]) -> Dict[str, Any]:
