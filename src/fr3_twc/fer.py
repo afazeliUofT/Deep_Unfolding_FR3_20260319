@@ -24,14 +24,14 @@ class FerCurveResult:
 def _import_sionna_blocks() -> Dict[str, Any]:
     errs: list[str] = []
 
+    # Sionna 1.2.x / sionna-no-rt 1.2.x public API.
+    # BinarySource is part of the mapping module, not sionna.phy.utils.
     try:
         import sionna  # type: ignore
-        from sionna.phy.utils import BinarySource  # type: ignore
-        from sionna.phy.channel.awgn import AWGN  # type: ignore
-        from sionna.phy.mapping import Mapper, Demapper  # type: ignore
-        from sionna.phy.fec.ldpc.encoding import LDPC5GEncoder  # type: ignore
-        from sionna.phy.fec.ldpc.decoding import LDPC5GDecoder  # type: ignore
         import tensorflow as tf  # type: ignore
+        from sionna.phy.mapping import BinarySource, Mapper, Demapper  # type: ignore
+        from sionna.phy.channel import AWGN  # type: ignore
+        from sionna.phy.fec.ldpc import LDPC5GEncoder, LDPC5GDecoder  # type: ignore
 
         return {
             "BinarySource": BinarySource,
@@ -45,16 +45,16 @@ def _import_sionna_blocks() -> Dict[str, Any]:
             "sionna_version": str(getattr(sionna, "__version__", "unknown")),
         }
     except Exception as e:
-        errs.append(f"sionna.phy import failed: {e}")
+        errs.append(f"sionna.phy public API import failed: {e}")
 
+    # Fallback for the same Sionna generation via submodule imports.
     try:
         import sionna  # type: ignore
-        from sionna.utils import BinarySource  # type: ignore
-        from sionna.channel import AWGN  # type: ignore
-        from sionna.mapping import Mapper, Demapper  # type: ignore
-        from sionna.fec.ldpc.encoding import LDPC5GEncoder  # type: ignore
-        from sionna.fec.ldpc.decoding import LDPC5GDecoder  # type: ignore
         import tensorflow as tf  # type: ignore
+        from sionna.phy.mapping import BinarySource, Mapper, Demapper  # type: ignore
+        from sionna.phy.channel.awgn import AWGN  # type: ignore
+        from sionna.phy.fec.ldpc.encoding import LDPC5GEncoder  # type: ignore
+        from sionna.phy.fec.ldpc.decoding import LDPC5GDecoder  # type: ignore
 
         return {
             "BinarySource": BinarySource,
@@ -64,13 +64,13 @@ def _import_sionna_blocks() -> Dict[str, Any]:
             "LDPC5GEncoder": LDPC5GEncoder,
             "LDPC5GDecoder": LDPC5GDecoder,
             "tf": tf,
-            "backend": "sionna.legacy",
+            "backend": "sionna.phy.submodule",
             "sionna_version": str(getattr(sionna, "__version__", "unknown")),
         }
     except Exception as e:
-        errs.append(f"sionna legacy import failed: {e}")
+        errs.append(f"sionna.phy submodule import failed: {e}")
 
-    raise RuntimeError("Could not import Sionna NR blocks. " + " | ".join(errs))
+    raise RuntimeError("Could not import Sionna FER blocks. " + " | ".join(errs))
 
 
 def _fer_fallback_awgn(sinr_db: float, modulation_order: int, code_rate: float) -> float:
@@ -172,11 +172,19 @@ def simulate_5g_nr_fer_curve(
         LDPC5GEncoder = blk["LDPC5GEncoder"]
         LDPC5GDecoder = blk["LDPC5GDecoder"]
 
-        encoder = LDPC5GEncoder(k_bits, n_bits)
+        # Use the modulation order in the encoder so the 5G LDPC output
+        # interleaver matches the selected QAM order.
+        encoder = LDPC5GEncoder(
+            k_bits,
+            n_bits,
+            num_bits_per_symbol=int(modulation_order),
+        )
 
         decoder = None
         decoder_errs = []
         for kwargs in [
+            {"hard_out": True, "return_infobits": True, "num_iter": decoder_iterations},
+            {"hard_out": True, "return_infobits": True},
             {"hard_out": True, "num_iter": decoder_iterations},
             {"hard_out": True},
             {"num_iter": decoder_iterations},
