@@ -1,1 +1,6 @@
 venv_fr3_twc/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+fr3_twc_*.zip
