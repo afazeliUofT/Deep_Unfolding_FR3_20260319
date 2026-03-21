@@ -7,9 +7,15 @@ _rb.bootstrap()
 import argparse
 from pathlib import Path
 
+import pandas as pd
+
 from fr3_twc.config import get_twc_paths, load_twc_config
 from fr3_twc.fer import fer_from_algorithm_summary
-from fr3_twc.pipeline import default_baseline_algorithms, default_unfolded_algorithms, run_suite
+from fr3_twc.pipeline import (
+    default_baseline_algorithms,
+    default_unfolded_algorithms,
+    run_suite,
+)
 from fr3_twc.reporting import load_models, save_grouped_mean
 
 
@@ -21,20 +27,29 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-
 def main() -> None:
     args = parse_args()
     cfg = load_twc_config(args.config, overrides=args.overrides)
     twc_paths = get_twc_paths(cfg)
+
     models = load_models(twc_paths.checkpoint_root, names=["soft", "cognitive"])
     missing = [n for n in ["soft", "cognitive"] if n not in models]
     if missing:
         raise FileNotFoundError(f"Missing checkpoints in {twc_paths.checkpoint_root}: {missing}")
 
     algs = default_baseline_algorithms() + default_unfolded_algorithms()
-    art = run_suite(cfg=cfg, suite_name=args.suite_name, algorithms=algs, model_registry=models)
+    art = run_suite(
+        cfg=cfg,
+        suite_name=args.suite_name,
+        algorithms=algs,
+        model_registry=models,
+    )
 
-    summary_mean = save_grouped_mean(art.summary_df, art.paths.root / "summary_mean.csv", group_cols=["algorithm", "sweep_value"])
+    summary_mean = save_grouped_mean(
+        art.summary_df,
+        art.paths.root / "summary_mean.csv",
+        group_cols=["algorithm", "sweep_value"],
+    )
     if not art.history_df.empty:
         save_grouped_mean(
             art.history_df,
@@ -43,6 +58,9 @@ def main() -> None:
         )
 
     fer_cfg = cfg.raw.get("twc", {}).get("fer", {}) or {}
+    require_sionna = bool(fer_cfg.get("require_sionna", False))
+    allow_fallback = bool(fer_cfg.get("allow_fallback", not require_sionna))
+
     fer_df = fer_from_algorithm_summary(
         summary_mean,
         modulation_orders=list(fer_cfg.get("modulation_orders", [2, 4])),
@@ -50,8 +68,26 @@ def main() -> None:
         k_bits=int(fer_cfg.get("k_bits", 1024)),
         num_frames_per_point=int(fer_cfg.get("num_frames_per_point", 128)),
         max_frame_errors=int(fer_cfg.get("max_frame_errors", 100)),
+        decoder_iterations=int(fer_cfg.get("decoder_iterations", 20)),
+        require_sionna=require_sionna,
+        allow_fallback=allow_fallback,
     )
-    fer_df.to_csv(art.paths.root / "fer.csv", index=False)
+    fer_path = art.paths.root / "fer.csv"
+    fer_df.to_csv(fer_path, index=False)
+
+    if "used_sionna" in fer_df.columns:
+        used = fer_df["used_sionna"].astype(bool)
+        print(f"FER_STATUS used_sionna_all={bool(used.all())} used_sionna_any={bool(used.any())}")
+        if not used.all():
+            err_col = fer_df["sionna_error"] if "sionna_error" in fer_df.columns else pd.Series([], dtype=str)
+            errors = sorted({str(x) for x in err_col.dropna().tolist() if str(x).strip()})
+            if errors:
+                print("FER_WARNING unique_errors:")
+                for err in errors:
+                    print(f"  - {err}")
+            if require_sionna:
+                raise RuntimeError(f"FER fallback detected even though require_sionna=True. See {fer_path}")
+
     print(f"Saved evaluation suite to: {art.paths.root}")
 
 

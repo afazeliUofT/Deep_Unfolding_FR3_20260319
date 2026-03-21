@@ -1,0 +1,20 @@
+base_config: twc_base.yaml
+
+system_model:
+  num_re_sim: 8
+
+experiment:
+  num_batches: 8
+  freeze_topology: false
+
+sweep:
+  enabled: true
+  variable: snr_db
+  values: [5.0]
+
+twc:
+  scaling:
+    num_bs_ant_values: [16, 32, 64]
+    num_ut_per_sector_values: [4, 6, 8]
+    sweep_value_db: 5.0
+    num_batches: 8
