@@ -1,0 +1,25 @@
+base_config: twc_base.yaml
+
+system_model:
+  num_re_sim: 16
+  simulate_full_band: false
+
+experiment:
+  num_batches: 32
+  freeze_topology: false
+
+sweep:
+  enabled: true
+  variable: snr_db
+  values: [-10.0, -5.0, 0.0, 5.0, 10.0, 15.0, 20.0, 25.0]
+
+twc:
+  fer:
+    modulation_orders: [2, 4]
+    code_rates: [0.2, 0.3, 0.5]
+    k_bits: 1024
+    num_frames_per_point: 1024
+    max_frame_errors: 400
+    decoder_iterations: 20
+    require_sionna: true
+    allow_fallback: false

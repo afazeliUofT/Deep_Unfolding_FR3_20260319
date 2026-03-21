@@ -48,6 +48,45 @@ def _training_row(step: int, snr_db: float, loss: float, grad_norm: float, summa
     return row
 
 
+def _current_lr(optimizer: tf.keras.optimizers.Optimizer) -> float:
+    lr = optimizer.learning_rate
+    if callable(lr):
+        lr = lr(optimizer.iterations)
+    return float(tf.convert_to_tensor(lr).numpy())
+
+
+def _maybe_decay_lr(
+    optimizer: tf.keras.optimizers.Optimizer,
+    step: int,
+    milestones: list[int],
+    factor: float,
+) -> None:
+    if step in milestones:
+        current = _current_lr(optimizer)
+        new_lr = max(current * float(factor), 1.0e-5)
+        optimizer.learning_rate.assign(new_lr)
+        print(f"LR_DECAY step={step} old_lr={current:.6g} new_lr={new_lr:.6g}")
+
+
+def _project_grads_to_variable_dtype(
+    grads: list[tf.Tensor | None],
+    vars_: list[tf.Variable],
+) -> list[tf.Tensor]:
+    out: list[tf.Tensor] = []
+    for g, v in zip(grads, vars_):
+        if g is None:
+            out.append(tf.zeros_like(v))
+            continue
+        if g.dtype.is_complex and not v.dtype.is_complex:
+            # TensorFlow otherwise emits repeated warnings and implicitly drops
+            # the imaginary component. Make that projection explicit.
+            g = tf.math.real(g)
+        if g.dtype != v.dtype:
+            g = tf.cast(g, v.dtype)
+        out.append(g)
+    return out
+
+
 
 def main() -> None:
     args = parse_args()
@@ -83,6 +122,8 @@ def main() -> None:
     grad_clip_norm = float(tr.get("grad_clip_norm", 5.0))
     snr_choices = list(tr.get("snr_db_choices", [-5.0, 0.0, 5.0]))
     sigma = float(tr.get("random_weight_sigma", 0.7))
+    lr_decay_milestones = [int(x) for x in tr.get("lr_decay_milestones", [])]
+    lr_decay_factor = float(tr.get("lr_decay_factor", 0.5))
 
     best_loss = np.inf
     rows = []
@@ -134,12 +175,13 @@ def main() -> None:
             )
 
         grads = tape.gradient(loss, model.trainable_variables)
-        grads = [tf.zeros_like(v) if g is None else g for g, v in zip(grads, model.trainable_variables)]
+        grads = _project_grads_to_variable_dtype(grads, model.trainable_variables)
         grad_norm = float(tf.linalg.global_norm(grads).numpy())
         if grad_clip_norm > 0:
             grads, _ = tf.clip_by_global_norm(grads, grad_clip_norm)
         optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
+        _maybe_decay_lr(optimizer, step, lr_decay_milestones, lr_decay_factor)
         summary = extended_metrics(
             w=result.w,
             mmse=result.mmse,
@@ -151,7 +193,9 @@ def main() -> None:
             history=result.history,
             current_weights=weights,
         )
-        rows.append(_training_row(step, snr_db, float(loss.numpy()), grad_norm, summary, mask_meta))
+        row = _training_row(step, snr_db, float(loss.numpy()), grad_norm, summary, mask_meta)
+        row["learning_rate"] = _current_lr(optimizer)
+        rows.append(row)
 
         loss_f = float(loss.numpy())
         if loss_f < best_loss:
@@ -165,7 +209,8 @@ def main() -> None:
             print(
                 f"step={step:04d} variant={args.variant} snr_db={snr_db:+.1f} "
                 f"loss={loss_f:.4f} wsr={summary['weighted_sum_rate_bps_per_hz']:.3f} "
-                f"fs_violation={summary['max_fs_violation_watt']:.3e}"
+                f"fs_violation={summary['max_fs_violation_watt']:.3e} "
+                f"lr={_current_lr(optimizer):.4e}"
             )
 
     df = pd.DataFrame(rows)

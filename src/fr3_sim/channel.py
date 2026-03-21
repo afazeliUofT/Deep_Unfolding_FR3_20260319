@@ -11,6 +11,9 @@ from .config import ResolvedConfig
 from .topology import FixedServiceLocations, TopologyData
 
 
+_FS_CSV_CACHE: dict[str, tuple[np.ndarray, np.ndarray]] = {}
+
+
 @dataclass(frozen=True)
 class FsStats:
     bar_beta: tf.Tensor
@@ -92,10 +95,14 @@ def _optional_fs_specs(cfg: ResolvedConfig, L: int) -> Tuple[np.ndarray, np.ndar
     if not csvs:
         return tone_centers, i_max_dbm
 
+    cache_key = f"{csvs[0]}::{L}"
+    if cache_key in _FS_CSV_CACHE:
+        return _FS_CSV_CACHE[cache_key]
+
     try:
         import pandas as pd  # type: ignore
 
-        df = pd.read_csv(csvs[0])
+        df = pd.read_csv(csvs[0], low_memory=False)
         if len(df) > 0:
             rows = df.iloc[np.arange(L) % len(df)]
             numeric = {str(c).lower(): c for c in df.columns}
@@ -123,7 +130,8 @@ def _optional_fs_specs(cfg: ResolvedConfig, L: int) -> Tuple[np.ndarray, np.ndar
     except Exception:
         pass
 
-    return tone_centers, i_max_dbm
+    _FS_CSV_CACHE[cache_key] = (tone_centers, i_max_dbm)
+    return _FS_CSV_CACHE[cache_key]
 
 
 def _dbm_to_watt(x_dbm: np.ndarray) -> np.ndarray:
