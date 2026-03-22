@@ -287,6 +287,36 @@ def simulate_5g_nr_fer_curve(
         )
 
 
+def _infer_fer_input_sinr_db(
+    df_algo: pd.DataFrame,
+    *,
+    requested_col: str,
+) -> tuple[list[float], str]:
+    if requested_col in df_algo.columns:
+        vals = pd.to_numeric(df_algo[requested_col], errors="coerce").to_numpy(dtype=float)
+        if np.isfinite(vals).any():
+            if requested_col == "avg_sinr_db" and "avg_user_rate_bps_per_hz" in df_algo.columns:
+                avg_rate = pd.to_numeric(
+                    df_algo["avg_user_rate_bps_per_hz"], errors="coerce"
+                ).to_numpy(dtype=float)
+                # If the saved avg_sinr is deeply negative while the saved mean rate is high,
+                # the AWGN FER abstraction is better driven by a rate-equivalent SINR.
+                if np.nanmedian(vals) < -3.0 and np.nanmedian(avg_rate) > 1.5:
+                    sinr_lin = np.maximum(np.power(2.0, avg_rate) - 1.0, 1e-9)
+                    return list((10.0 * np.log10(sinr_lin)).astype(float)), "rate_inversion"
+            return list(vals.astype(float)), requested_col
+
+    if "avg_user_rate_bps_per_hz" in df_algo.columns:
+        avg_rate = pd.to_numeric(
+            df_algo["avg_user_rate_bps_per_hz"], errors="coerce"
+        ).to_numpy(dtype=float)
+        if np.isfinite(avg_rate).any():
+            sinr_lin = np.maximum(np.power(2.0, avg_rate) - 1.0, 1e-9)
+            return list((10.0 * np.log10(sinr_lin)).astype(float)), "rate_inversion"
+
+    raise KeyError(f"Could not infer FER SINR input from columns: {list(df_algo.columns)}")
+
+
 def fer_from_algorithm_summary(
     summary_df: pd.DataFrame,
     *,
@@ -304,7 +334,10 @@ def fer_from_algorithm_summary(
 ) -> pd.DataFrame:
     rows: List[Dict[str, Any]] = []
     for algo, df_algo in summary_df.groupby(algorithm_col):
-        sinr_points = list(df_algo[sinr_col].astype(float).tolist())
+        sinr_points, sinr_source = _infer_fer_input_sinr_db(
+            df_algo,
+            requested_col=sinr_col,
+        )
         sweep_points = list(df_algo[sweep_col].tolist())
         for m in modulation_orders:
             for r in code_rates:
@@ -329,6 +362,8 @@ def fer_from_algorithm_summary(
                             "k_bits": int(curve.k_bits),
                             "n_bits": int(curve.n_bits),
                             "fer": float(row["fer"]),
+                            "fer_input_sinr_db": float(row["sinr_db"]),
+                            "sinr_source": str(sinr_source),
                             "used_sionna": bool(row["used_sionna"]),
                             "backend": str(row["backend"]),
                             "sionna_version": str(row["sionna_version"]),

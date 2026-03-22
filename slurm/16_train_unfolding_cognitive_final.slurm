@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=fr3_twc_du_cognitive_final
 #SBATCH --account=def-rsadve
-#SBATCH --time=6:00:00
+#SBATCH --time=2:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --gpus-per-node=1

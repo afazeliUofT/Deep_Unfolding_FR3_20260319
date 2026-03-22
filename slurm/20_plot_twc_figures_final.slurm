@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=fr3_twc_figures_final
 #SBATCH --account=def-rsadve
-#SBATCH --time=01:00:00
+#SBATCH --time=00:30:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
 #SBATCH --output=logs/%x-%j.out

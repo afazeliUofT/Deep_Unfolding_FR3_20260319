@@ -73,6 +73,41 @@ def _pareto_plot(df: pd.DataFrame, out_path: Path) -> None:
 
 
 
+_PF_ALGOS = [
+    "pf_fs_soft",
+    "pf_fs_cognitive",
+    "du_pf_soft",
+    "du_pf_cognitive",
+    "pf_fs_hybrid",
+]
+_LEGACY_ALGOS = [
+    "ew_no_fs",
+    "ew_fs_soft",
+    "edge_fs_soft",
+]
+
+
+def _subset_algorithms(df: pd.DataFrame, algos: list[str]) -> pd.DataFrame:
+    sub = df[df["algorithm"].isin(algos)].copy()
+    if sub.empty:
+        return sub
+    order = {a: i for i, a in enumerate(algos)}
+    sub["_algo_order"] = sub["algorithm"].map(order).fillna(999)
+    sub = sub.sort_values(["_algo_order", "sweep_value"]).drop(columns=["_algo_order"])
+    return sub
+
+
+def _best_case_fer_subset(fer_df: pd.DataFrame) -> pd.DataFrame:
+    if fer_df.empty:
+        return fer_df
+    mod_min = fer_df["modulation_order"].min()
+    code_min = fer_df["code_rate"].min()
+    return fer_df[
+        (fer_df["modulation_order"] == mod_min)
+        & (fer_df["code_rate"] == code_min)
+    ].copy()
+
+
 def main() -> None:
     args = parse_args()
     root = Path(args.output_root)
@@ -93,13 +128,45 @@ def main() -> None:
             df = pd.read_csv(summary_csv)
             if "weighted_sum_rate_bps_per_hz" in df.columns:
                 plot_metric_vs_sweep(df, "weighted_sum_rate_bps_per_hz", out_dir / "01_weighted_sum_rate_vs_snr.png")
+                pf_df = _subset_algorithms(df, _PF_ALGOS)
+                if not pf_df.empty:
+                    plot_metric_vs_sweep(
+                        pf_df,
+                        "weighted_sum_rate_bps_per_hz",
+                        out_dir / "01a_pf_only_weighted_sum_rate_vs_snr.png",
+                        title="PF-only weighted sum rate vs SNR",
+                    )
+                legacy_df = _subset_algorithms(df, _LEGACY_ALGOS + ["pf_fs_soft"])
+                if not legacy_df.empty:
+                    plot_metric_vs_sweep(
+                        legacy_df,
+                        "weighted_sum_rate_bps_per_hz",
+                        out_dir / "01b_legacy_references_weighted_sum_rate_vs_snr.png",
+                        title="Legacy equal-weight references vs PF-soft",
+                    )
             if "sum_rate_bps_per_hz" in df.columns:
                 plot_metric_vs_sweep(df, "sum_rate_bps_per_hz", out_dir / "02_sum_rate_vs_snr.png")
             fairness = _fairness_col(df)
             if fairness is not None:
                 plot_metric_vs_sweep(df, fairness, out_dir / "03_fairness_vs_snr.png")
+                pf_df = _subset_algorithms(df, _PF_ALGOS)
+                if not pf_df.empty:
+                    plot_metric_vs_sweep(
+                        pf_df,
+                        fairness,
+                        out_dir / "03a_pf_only_fairness_vs_snr.png",
+                        title="PF-only fairness vs SNR",
+                    )
             if "protection_satisfaction" in df.columns:
                 plot_metric_vs_sweep(df, "protection_satisfaction", out_dir / "04_protection_vs_snr.png")
+                pf_df = _subset_algorithms(df, _PF_ALGOS)
+                if not pf_df.empty:
+                    plot_metric_vs_sweep(
+                        pf_df,
+                        "protection_satisfaction",
+                        out_dir / "04a_pf_only_protection_vs_snr.png",
+                        title="PF-only protection vs SNR",
+                    )
             if "coverage_rate" in df.columns:
                 plot_metric_vs_sweep(df, "coverage_rate", out_dir / "05_coverage_vs_snr.png")
             if "runtime_sec" in df.columns:
@@ -119,6 +186,13 @@ def main() -> None:
         if fer_csv.exists():
             fer_df = pd.read_csv(fer_csv)
             plot_fer(fer_df, out_dir / "10_fer.png")
+            best_fer_df = _best_case_fer_subset(fer_df)
+            if not best_fer_df.empty:
+                plot_fer(
+                    best_fer_df,
+                    out_dir / "10a_fer_best_case.png",
+                    title="FER (lowest-order, lowest-rate MCS)",
+                )
 
     if scaling_dir is not None:
         scaling_csv = _pick_csv(scaling_dir, "summary_mean.csv", "summary.csv")

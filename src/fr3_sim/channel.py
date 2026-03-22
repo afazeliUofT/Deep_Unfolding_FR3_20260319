@@ -81,6 +81,62 @@ def _find_fs_csvs(repo_root: Path) -> list[Path]:
     return sorted(csvs, key=_priority)
 
 
+def _coerce_numeric(values) -> np.ndarray:
+    try:
+        import pandas as pd  # type: ignore
+        arr = pd.to_numeric(values, errors="coerce").to_numpy(dtype=np.float32)
+    except Exception:
+        try:
+            arr = np.asarray(values, dtype=np.float32)
+        except Exception:
+            arr = np.full((len(values),), np.nan, dtype=np.float32)
+    return arr.astype(np.float32)
+
+
+def _sanitize_threshold_dbm(vals_dbm: np.ndarray, default_dbm: float) -> np.ndarray:
+    vals_dbm = np.asarray(vals_dbm, dtype=np.float32)
+    ok = np.isfinite(vals_dbm) & (vals_dbm >= -250.0) & (vals_dbm <= 0.0)
+    out = np.where(ok, vals_dbm, np.float32(default_dbm)).astype(np.float32)
+    return out
+
+
+def _extract_i_max_dbm(
+    rows,
+    numeric: dict[str, str],
+    *,
+    default_dbm: float,
+) -> np.ndarray:
+    dbm_keys = [
+        "i_max_dbm",
+        "imax_dbm",
+        "threshold_dbm",
+        "protection_dbm",
+        "rx_threshold_dbm",
+        "rx_threshold_dbm_ber1e3",
+    ]
+    dbw_keys = [
+        "i_max_dbw",
+        "imax_dbw",
+        "threshold_dbw",
+        "protection_dbw",
+        "rx_threshold_dbw",
+        "rx_threshold_dbw_ber1e3",
+    ]
+
+    for key in dbm_keys:
+        if key in numeric:
+            vals = _coerce_numeric(rows[numeric[key]])
+            return _sanitize_threshold_dbm(vals, default_dbm)
+
+    for key in dbw_keys:
+        if key in numeric:
+            vals_dbw = _coerce_numeric(rows[numeric[key]])
+            vals_dbm = vals_dbw + np.float32(30.0)
+            return _sanitize_threshold_dbm(vals_dbm, default_dbm)
+
+    return np.full((len(rows),), np.float32(default_dbm), dtype=np.float32)
+
+
 def _optional_fs_specs(cfg: ResolvedConfig, L: int) -> Tuple[np.ndarray, np.ndarray]:
     repo_root = _repo_root()
     csvs = _find_fs_csvs(repo_root)
@@ -107,17 +163,11 @@ def _optional_fs_specs(cfg: ResolvedConfig, L: int) -> Tuple[np.ndarray, np.ndar
             rows = df.iloc[np.arange(L) % len(df)]
             numeric = {str(c).lower(): c for c in df.columns}
 
-            for key in [
-                "i_max_dbm",
-                "imax_dbm",
-                "threshold_dbm",
-                "protection_dbm",
-                "rx_threshold_dbm",
-            ]:
-                if key in numeric:
-                    vals = rows[numeric[key]].astype(float).to_numpy(dtype=np.float32)
-                    i_max_dbm = vals
-                    break
+            i_max_dbm = _extract_i_max_dbm(
+                rows,
+                numeric,
+                default_dbm=float(cfg.raw.get("fixed_service", {}).get("i_max_dbm", -110.0)),
+            )
 
             for key in ["center_fraction", "center_norm", "fc_frac"]:
                 if key in numeric:
