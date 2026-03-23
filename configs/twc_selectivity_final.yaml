@@ -4,7 +4,7 @@ system_model:
   num_re_sim: 16
 
 experiment:
-  num_batches: 16
+  num_batches: 20
   freeze_topology: false
 
 sweep:
@@ -16,4 +16,4 @@ twc:
   selectivity:
     tau_rms_ns_values: [10.0, 20.0, 50.0, 100.0, 200.0, 400.0, 800.0]
     sweep_value_db: 5.0
-    num_batches: 16
+    num_batches: 20

@@ -75,11 +75,137 @@ def _prepare_user_weights(
     return tf.reshape(tf.tile(user_weights[:, tf.newaxis, :], [1, T, 1]), [batch * T, U])
 
 
-def _history_weighted_sum_rate(mmse: MmseOutput, xi: tf.Tensor, batch: int, T: int, real_dtype: tf.DType) -> tf.Tensor:
+def _history_weighted_sum_rate(
+    mmse: MmseOutput,
+    xi: tf.Tensor,
+    batch: int,
+    T: int,
+    real_dtype: tf.DType,
+) -> tf.Tensor:
     sinr = tf.reshape(tf.cast(mmse.sinr, real_dtype), [batch, T, -1])
     xi_bt = tf.reshape(xi, [batch, T, -1])
     rate = tf.math.log(1.0 + sinr) / tf.math.log(tf.constant(2.0, dtype=real_dtype))
     return tf.reduce_mean(tf.reduce_sum(xi_bt * rate, axis=-1))
+
+
+def _compute_fs_interference_from_w_full(
+    w_full: tf.Tensor,
+    fs: Optional[FsStats],
+    re_scaling: float,
+    real_dtype: tf.DType,
+) -> tf.Tensor:
+    if fs is None:
+        batch = tf.shape(w_full)[0]
+        return tf.zeros([batch, 0], dtype=real_dtype)
+
+    corr = getattr(fs, "correlation", "identity")
+    if corr == "steering_rank1" and getattr(fs, "a_bs_fs", None) is not None:
+        a = tf.cast(fs.a_bs_fs, w_full.dtype)  # [S,B,L,M]
+        proj = tf.einsum(
+            "sblm,stbmu->stblu",
+            tf.math.conj(a),
+            w_full,
+            optimize=True,
+        )
+        p_dir = tf.reduce_sum(tf.abs(proj) ** 2, axis=-1)
+        delta_tb = tf.transpose(tf.cast(fs.delta, real_dtype), [1, 0])
+        p_dir = tf.cast(p_dir, real_dtype) * delta_tb[None, :, :, None]
+        return tf.cast(re_scaling, real_dtype) * tf.einsum(
+            "stbl,tl,sbl->sl",
+            p_dir,
+            tf.cast(fs.epsilon, real_dtype),
+            tf.cast(fs.bar_beta, real_dtype),
+            optimize=True,
+        )
+
+    pow_t_b = tf.reduce_sum(tf.abs(w_full) ** 2, axis=[3, 4])
+    delta_tb = tf.transpose(tf.cast(fs.delta, real_dtype), [1, 0])
+    pow_t_b = tf.cast(pow_t_b, real_dtype) * delta_tb[None, :, :]
+    return tf.cast(re_scaling, real_dtype) * tf.einsum(
+        "stb,tl,sbl->sl",
+        pow_t_b,
+        tf.cast(fs.epsilon, real_dtype),
+        tf.cast(fs.bar_beta, real_dtype),
+        optimize=True,
+    )
+
+
+def _soft_fs_budget_repair(
+    *,
+    w_full: tf.Tensor,
+    fs: Optional[FsStats],
+    re_scaling: float,
+    max_passes: int,
+    tol_ratio: float,
+) -> tuple[tf.Tensor, tf.Tensor]:
+    """Repair excessive FS leakage without forcing full nulls.
+
+    For steering-rank1 protection, each violating FS direction is clipped by
+    shrinking only the corresponding directional beam component. This is much
+    less destructive than full hard nulling but actually enforces the budget.
+
+    The update is intentionally simple and eager-friendly because this solver is
+    also used inside training.
+    """
+    real_dtype = w_full.dtype.real_dtype
+    if fs is None or int(fs.i_max_watt.shape[-1]) == 0 or int(max_passes) <= 0:
+        I_fs = _compute_fs_interference_from_w_full(w_full, fs, re_scaling, real_dtype)
+        return w_full, I_fs
+
+    i_max = tf.cast(fs.i_max_watt[None, :], real_dtype)
+    tol_ratio_t = tf.cast(float(max(tol_ratio, 1.0)), real_dtype)
+    eps = tf.cast(1e-30, real_dtype)
+
+    corr = getattr(fs, "correlation", "identity")
+    if corr != "steering_rank1" or getattr(fs, "a_bs_fs", None) is None:
+        for _ in range(int(max_passes)):
+            I_fs = _compute_fs_interference_from_w_full(w_full, fs, re_scaling, real_dtype)
+            ratio = I_fs / tf.maximum(i_max, eps)
+            alpha_per_l = tf.where(
+                ratio > tol_ratio_t,
+                tf.sqrt(tf.maximum(i_max, eps) / tf.maximum(I_fs, eps)),
+                tf.ones_like(ratio),
+            )
+            alpha_batch = tf.reduce_min(alpha_per_l, axis=-1)
+            w_full = w_full * tf.cast(alpha_batch[:, tf.newaxis, tf.newaxis, tf.newaxis, tf.newaxis], w_full.dtype)
+        I_fs = _compute_fs_interference_from_w_full(w_full, fs, re_scaling, real_dtype)
+        return w_full, I_fs
+
+    batch = tf.shape(w_full)[0]
+    T = tf.shape(w_full)[1]
+    B = tf.shape(w_full)[2]
+    M = tf.shape(w_full)[3]
+    U = tf.shape(w_full)[4]
+    L = int(fs.bar_beta.shape[-1])
+
+    a = tf.cast(fs.a_bs_fs, w_full.dtype)
+    a_eff = tf.reshape(
+        tf.tile(a[:, tf.newaxis, ...], [1, T, 1, 1, 1]),
+        [batch * T, B, L, M],
+    )
+
+    for _ in range(int(max_passes)):
+        I_fs = _compute_fs_interference_from_w_full(w_full, fs, re_scaling, real_dtype)
+        ratio = I_fs / tf.maximum(i_max, eps)
+        alpha = tf.where(
+            ratio > tol_ratio_t,
+            tf.sqrt(tf.maximum(i_max, eps) / tf.maximum(I_fs, eps)),
+            tf.ones_like(ratio),
+        )
+        alpha = tf.clip_by_value(alpha, 0.0, 1.0)
+        alpha_eff = tf.reshape(tf.tile(alpha[:, tf.newaxis, :], [1, T, 1]), [batch * T, L])
+
+        w_eff = tf.reshape(w_full, [batch * T, B, M, U])
+        for l in range(L):
+            a_l = a_eff[:, :, l, :]  # [S_eff,B,M]
+            coeff = tf.einsum("sbm,sbmu->sbu", tf.math.conj(a_l), w_eff, optimize=True)
+            shrink = tf.cast((1.0 - alpha_eff[:, l])[:, tf.newaxis, tf.newaxis, tf.newaxis], w_full.dtype)
+            correction = shrink * a_l[:, :, :, tf.newaxis] * coeff[:, :, tf.newaxis, :]
+            w_eff = w_eff - correction
+        w_full = tf.reshape(w_eff, [batch, T, B, M, U])
+
+    I_fs = _compute_fs_interference_from_w_full(w_full, fs, re_scaling, real_dtype)
+    return w_full, I_fs
 
 
 def weighted_wmmse_solve(
@@ -100,9 +226,13 @@ def weighted_wmmse_solve(
     Supported FS modes
     ------------------
     - none          : ignores FS constraints
-    - budget_dual   : soft FS dual updates
+    - budget_dual   : soft FS dual updates + budget repair
     - hard_null     : steering-vector null projection every layer
-    - hybrid        : soft dual + null projection when FS violation is high
+    - hybrid        : soft dual + hard null trigger + budget repair
+
+    The key addition here is the *budget repair* step for the soft modes.
+    Without it, the current repo often produces visually smooth but actually
+    infeasible soft-protection curves, far above the FS threshold.
     """
     precision = cfg.derived.get("tf_precision", "single")
     real_dtype = tf.float32 if str(precision).lower().startswith("single") else tf.float64
@@ -129,8 +259,19 @@ def weighted_wmmse_solve(
     damping_base = float(w_cfg.get("damping_w", 1.0))
     fs_mode = str(fs_mode).lower().strip()
 
+    lam_update_mode = str(w_cfg.get("lambda_update_mode", "ratio")).lower().strip()
+    lam_update_clip = float(w_cfg.get("lambda_update_clip", 200.0))
+    lam_max = float(w_cfg.get("lambda_max", 2000.0))
+    fs_budget_repair = bool(w_cfg.get("fs_budget_repair", fs_mode in ("budget_dual", "hybrid")))
+    fs_budget_repair_iters = int(w_cfg.get("fs_budget_repair_iters", 3))
+    fs_budget_repair_tol_ratio = float(w_cfg.get("fs_budget_repair_tol_ratio", 1.01))
+
     re_scaling = float(cfg.derived["re_scaling"])
-    p_tot_watt = float(bs_total_tx_power_watt) if bs_total_tx_power_watt is not None else float(cfg.derived["bs_total_tx_power_watt"])
+    p_tot_watt = (
+        float(bs_total_tx_power_watt)
+        if bs_total_tx_power_watt is not None
+        else float(cfg.derived["bs_total_tx_power_watt"])
+    )
 
     xi = _prepare_user_weights(user_weights, batch=batch, T=T, U=U, real_dtype=real_dtype)
 
@@ -172,6 +313,19 @@ def weighted_wmmse_solve(
         except Exception:
             return tf.cast(float(val), real_dtype)
 
+    def _dual_violation_metric(I_fs_now: tf.Tensor, i_max_now: tf.Tensor) -> tf.Tensor:
+        ratio = I_fs_now / tf.maximum(i_max_now, tf.cast(1e-30, real_dtype))
+        if lam_update_mode == "raw":
+            viol = I_fs_now - i_max_now
+        elif lam_update_mode == "log_ratio":
+            viol = tf.math.log(tf.maximum(ratio, tf.cast(1e-30, real_dtype)))
+        elif lam_update_mode == "sqrt_ratio":
+            viol = tf.sqrt(tf.maximum(ratio, 0.0)) - 1.0
+        else:
+            viol = ratio - 1.0
+        clipv = tf.cast(abs(lam_update_clip), real_dtype)
+        return tf.clip_by_value(viol, -clipv, clipv)
+
     hard_null_thresh = float(cfg.raw.get("twc", {}).get("hybrid", {}).get("null_when_ratio_exceeds", 0.98))
 
     for k in range(K_iter):
@@ -196,7 +350,14 @@ def weighted_wmmse_solve(
             bar_beta = tf.cast(fs.bar_beta, real_dtype)
             epsilon = tf.cast(fs.epsilon, real_dtype)
             delta = tf.cast(fs.delta, real_dtype)
-            g = tf.cast(re_scaling, real_dtype) * tf.einsum("sl,bt,tl,sbl->sbtl", lam, delta, epsilon, bar_beta, optimize=True)
+            g = tf.cast(re_scaling, real_dtype) * tf.einsum(
+                "sl,bt,tl,sbl->sbtl",
+                lam,
+                delta,
+                epsilon,
+                bar_beta,
+                optimize=True,
+            )
             g_eff = tf.reshape(tf.transpose(g, [0, 2, 1, 3]), [S_eff, B, L])
             corr = getattr(fs, "correlation", "identity")
             if corr == "steering_rank1" and getattr(fs, "a_bs_fs", None) is not None:
@@ -222,25 +383,13 @@ def weighted_wmmse_solve(
         damping = _step_param(layer_params.damping if layer_params else None, k, damping_base)
         w = tf.cast(damping, complex_dtype) * w_new + tf.cast(1.0 - damping, complex_dtype) * w_prev
 
-        # Optional null projection
+        # Optional hard null projection
         if fs is not None and getattr(fs, "a_bs_fs", None) is not None and fs_mode in ("hard_null", "hybrid"):
             do_null = fs_mode == "hard_null"
             if fs_mode == "hybrid":
-                # evaluate current FS ratio quickly
                 w_tmp = tf.reshape(w, [batch, T, B, M, u_per_bs])
-                a = tf.cast(fs.a_bs_fs, complex_dtype)
-                proj = tf.einsum("sblm,stbmu->stblu", tf.math.conj(a), w_tmp, optimize=True)
-                p_dir = tf.reduce_sum(tf.abs(proj) ** 2, axis=-1)
-                delta_tb = tf.transpose(tf.cast(fs.delta, real_dtype), [1, 0])
-                p_dir = tf.cast(p_dir, real_dtype) * delta_tb[None, :, :, None]
-                I_fs_tmp = tf.cast(re_scaling, real_dtype) * tf.einsum(
-                    "stbl,tl,sbl->sl",
-                    p_dir,
-                    tf.cast(fs.epsilon, real_dtype),
-                    tf.cast(fs.bar_beta, real_dtype),
-                    optimize=True,
-                )
-                ratio = tf.reduce_max(I_fs_tmp / tf.maximum(fs.i_max_watt[None, :], 1e-30))
+                I_fs_tmp = _compute_fs_interference_from_w_full(w_tmp, fs, re_scaling, real_dtype)
+                ratio = tf.reduce_max(I_fs_tmp / tf.maximum(tf.cast(fs.i_max_watt[None, :], real_dtype), 1e-30))
                 do_null = bool((ratio > hard_null_thresh).numpy())
 
             if do_null:
@@ -267,37 +416,37 @@ def weighted_wmmse_solve(
         scale = tf.where(pow_b_raw > p_tot_watt, scale * tf.cast(1.0 - 1e-6, real_dtype), scale)
         w_full = w_full * tf.cast(scale[:, tf.newaxis, :, tf.newaxis, tf.newaxis], complex_dtype)
         w = tf.reshape(w_full, [S_eff, B, M, u_per_bs])
-        pow_b = tf.cast(re_scaling, real_dtype) * tf.reduce_sum(tf.cast(tf.reduce_sum(tf.abs(w_full) ** 2, axis=[3, 4]), real_dtype), axis=1)
+        pow_b = tf.cast(re_scaling, real_dtype) * tf.reduce_sum(
+            tf.cast(tf.reduce_sum(tf.abs(w_full) ** 2, axis=[3, 4]), real_dtype),
+            axis=1,
+        )
 
-        if fs is not None and fs_mode in ("budget_dual", "hybrid"):
-            corr = getattr(fs, "correlation", "identity")
-            if corr == "steering_rank1" and getattr(fs, "a_bs_fs", None) is not None:
-                a = tf.cast(fs.a_bs_fs, complex_dtype)
-                proj = tf.einsum("sblm,stbmu->stblu", tf.math.conj(a), w_full, optimize=True)
-                p_dir = tf.reduce_sum(tf.abs(proj) ** 2, axis=-1)
-                delta_tb = tf.transpose(tf.cast(fs.delta, real_dtype), [1, 0])
-                p_dir = tf.cast(p_dir, real_dtype) * delta_tb[None, :, :, None]
-                I_fs = tf.cast(re_scaling, real_dtype) * tf.einsum(
-                    "stbl,tl,sbl->sl",
-                    p_dir,
-                    tf.cast(fs.epsilon, real_dtype),
-                    tf.cast(fs.bar_beta, real_dtype),
-                    optimize=True,
-                )
-            else:
-                delta_tb = tf.transpose(tf.cast(fs.delta, real_dtype), [1, 0])
-                pow_bt_fs = tf.cast(tf.reduce_sum(tf.abs(w_full) ** 2, axis=[3, 4]), real_dtype) * delta_tb[None, :, :]
-                I_fs = tf.cast(re_scaling, real_dtype) * tf.einsum(
-                    "stb,tl,sbl->sl",
-                    pow_bt_fs,
-                    tf.cast(fs.epsilon, real_dtype),
-                    tf.cast(fs.bar_beta, real_dtype),
-                    optimize=True,
-                )
+        if fs is not None:
             i_max = tf.cast(fs.i_max_watt[None, :], real_dtype)
-            rho_lam = _step_param(layer_params.dual_step_lambda if layer_params else None, k, rho_lam_base)
-            viol = (I_fs - i_max) / tf.maximum(i_max, 1e-30)
-            lam = tf.maximum(0.0, lam + rho_lam * viol)
+            I_fs_pre = _compute_fs_interference_from_w_full(w_full, fs, re_scaling, real_dtype)
+            I_fs = I_fs_pre
+
+            if fs_mode in ("budget_dual", "hybrid"):
+                rho_lam = _step_param(layer_params.dual_step_lambda if layer_params else None, k, rho_lam_base)
+                viol = _dual_violation_metric(I_fs_pre, i_max)
+                lam = tf.maximum(0.0, lam + rho_lam * viol)
+                lam = tf.minimum(lam, tf.cast(lam_max, real_dtype))
+
+                if fs_budget_repair:
+                    w_full, I_fs = _soft_fs_budget_repair(
+                        w_full=w_full,
+                        fs=fs,
+                        re_scaling=re_scaling,
+                        max_passes=fs_budget_repair_iters,
+                        tol_ratio=fs_budget_repair_tol_ratio,
+                    )
+                    w = tf.reshape(w_full, [S_eff, B, M, u_per_bs])
+                    pow_b = tf.cast(re_scaling, real_dtype) * tf.reduce_sum(
+                        tf.cast(tf.reduce_sum(tf.abs(w_full) ** 2, axis=[3, 4]), real_dtype),
+                        axis=1,
+                    )
+            else:
+                I_fs = I_fs_pre
         else:
             I_fs = tf.zeros([batch, 0], dtype=real_dtype)
             i_max = tf.zeros([batch, 0], dtype=real_dtype)

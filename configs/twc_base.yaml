@@ -6,8 +6,8 @@ reproducibility:
   precision: "single"
 
 system_model:
-  # Use a small number of simulated tone groups for tractable wideband PF/unfolding runs.
-  num_re_sim: 4
+  # Train on more tone groups than before to reduce the train/eval mismatch.
+  num_re_sim: 8
   simulate_full_band: false
   bs_total_tx_power_dbm: 49.0
 
@@ -42,15 +42,21 @@ antenna:
 receiver:
   name: wmmse
   wmmse:
-    num_iterations: 20
+    num_iterations: 40
     fs_enforcement: budget_dual
     fs_lambda_search: false
     dual_step_mu: 0.02
-    dual_step_lambda: 0.10
+    dual_step_lambda: 0.50
     damping_w: 0.90
     ridge_regularization: 1.0e-9
     convergence_tol: 1.0e-6
     lambda_update_mode: ratio
+    lambda_update_clip: 200.0
+    lambda_max: 2000.0
+    fs_budget_repair: true
+    fs_budget_repair_iters: 4
+    fs_budget_repair_tol_ratio: 1.01
+    aggressive_fs_nulling_reg: 1.0e-6
 
 experiment:
   batch_size: 1
@@ -83,7 +89,7 @@ twc:
   coverage_sinr_threshold_db: 0.0
 
   pf:
-    num_slots: 6
+    num_slots: 8
     ema_beta: 0.90
     weight_clip_min: 0.1
     weight_clip_max: 10.0
@@ -96,40 +102,43 @@ twc:
     protect_top_l: 3
 
   hybrid:
-    null_when_ratio_exceeds: 0.95
+    # Make hybrid a rescue mechanism, not the default behavior.
+    null_when_ratio_exceeds: 3.0
 
   unfolding:
-    num_layers: 8
+    num_layers: 12
     init_damping: 0.85
     init_dual_step_mu: 0.02
-    init_dual_step_lambda: 0.10
+    init_dual_step_lambda: 0.50
 
   training:
     num_steps: 300
-    log_every: 10
-    save_every: 25
+    log_every: 25
+    save_every: 0
     learning_rate: 5.0e-3
     grad_clip_norm: 5.0
     snr_db_choices: [-5.0, 0.0, 5.0, 10.0]
     lambda_power: 25.0
-    lambda_fs: 25.0
+    lambda_fs: 60.0
     lambda_smooth: 1.0e-2
     random_weight_sigma: 0.70
 
   fer:
     modulation_orders: [2, 4]
     code_rates: [0.3, 0.5]
+    sinr_metric: p50_sinr_db
+    fallback_sinr_cols: [avg_sinr_db, p05_sinr_db, avg_user_rate_bps_per_hz]
     k_bits: 1024
     num_frames_per_point: 128
     max_frame_errors: 100
 
   scaling:
-    num_bs_ant_values: [16, 32, 64]
+    num_bs_ant_values: [16, 32, 64, 96]
     num_ut_per_sector_values: [4, 6, 8]
     sweep_value_db: 5.0
-    num_batches: 4
+    num_batches: 8
 
   selectivity:
     tau_rms_ns_values: [20.0, 50.0, 100.0, 200.0, 400.0]
     sweep_value_db: 5.0
-    num_batches: 4
+    num_batches: 8

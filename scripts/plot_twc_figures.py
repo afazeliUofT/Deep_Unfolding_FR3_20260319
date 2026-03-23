@@ -9,12 +9,12 @@ import shutil
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 from fr3_twc.common import ensure_dir, now_ts
 from fr3_twc.plotting import plot_convergence, plot_fer, plot_metric_vs_sweep, plot_scaling_heatmap, plot_selectivity_gap
 from fr3_twc.reporting import latest_prefixed_dir
-
 
 
 def parse_args() -> argparse.Namespace:
@@ -28,7 +28,6 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-
 def _pick_csv(root: Path, preferred: str, fallback: str) -> Path | None:
     p = root / preferred
     if p.exists():
@@ -39,7 +38,6 @@ def _pick_csv(root: Path, preferred: str, fallback: str) -> Path | None:
     return None
 
 
-
 def _fairness_col(df: pd.DataFrame) -> str | None:
     for c in ["pf_jain_fairness", "jain_fairness"]:
         if c in df.columns:
@@ -47,12 +45,10 @@ def _fairness_col(df: pd.DataFrame) -> str | None:
     return None
 
 
-
 def _copy_geometry(src_dir: Path, out_dir: Path) -> None:
     cand = src_dir / "figures" / "reference_geometry.png"
     if cand.exists():
         shutil.copy2(cand, out_dir / "reference_geometry.png")
-
 
 
 def _pareto_plot(df: pd.DataFrame, out_path: Path) -> None:
@@ -62,7 +58,13 @@ def _pareto_plot(df: pd.DataFrame, out_path: Path) -> None:
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     for algo, sub in df.groupby("algorithm"):
-        ax.plot(sub["protection_satisfaction"].to_numpy(), sub[fairness].to_numpy(), marker="o", linestyle="", label=str(algo))
+        ax.plot(
+            sub["protection_satisfaction"].to_numpy(),
+            sub[fairness].to_numpy(),
+            marker="o",
+            linestyle="",
+            label=str(algo),
+        )
     ax.set_xlabel("Protection satisfaction")
     ax.set_ylabel(fairness)
     ax.set_title("Fairness vs protection")
@@ -70,7 +72,6 @@ def _pareto_plot(df: pd.DataFrame, out_path: Path) -> None:
     ax.legend(fontsize=8)
     fig.savefig(out_path, dpi=220, bbox_inches="tight")
     plt.close(fig)
-
 
 
 _PF_ALGOS = [
@@ -97,15 +98,41 @@ def _subset_algorithms(df: pd.DataFrame, algos: list[str]) -> pd.DataFrame:
     return sub
 
 
-def _best_case_fer_subset(fer_df: pd.DataFrame) -> pd.DataFrame:
+def _informative_fer_subset(fer_df: pd.DataFrame, target_fer: float = 1.0e-1) -> pd.DataFrame:
     if fer_df.empty:
         return fer_df
-    mod_min = fer_df["modulation_order"].min()
-    code_min = fer_df["code_rate"].min()
-    return fer_df[
-        (fer_df["modulation_order"] == mod_min)
-        & (fer_df["code_rate"] == code_min)
+
+    rows = []
+    for (mod_order, code_rate), sub in fer_df.groupby(["modulation_order", "code_rate"]):
+        vals = pd.to_numeric(sub["fer"], errors="coerce").to_numpy(dtype=float)
+        vals = vals[np.isfinite(vals)]
+        if vals.size == 0:
+            continue
+        median_fer = float(np.median(np.clip(vals, 1e-6, 1.0)))
+        score = abs(np.log10(median_fer) - np.log10(max(target_fer, 1e-6)))
+        rows.append(
+            {
+                "modulation_order": int(mod_order),
+                "code_rate": float(code_rate),
+                "median_fer": median_fer,
+                "score": score,
+            }
+        )
+
+    if not rows:
+        return fer_df.iloc[0:0].copy()
+
+    stats = pd.DataFrame(rows).sort_values(
+        ["score", "modulation_order", "code_rate"],
+        ascending=[True, False, False],
+    )
+    best = stats.iloc[0]
+    sub = fer_df[
+        (fer_df["modulation_order"] == int(best["modulation_order"]))
+        & (fer_df["code_rate"] == float(best["code_rate"]))
     ].copy()
+    sub.attrs["mcs_label"] = f"{int(best['modulation_order'])}-bit, R={float(best['code_rate']):.2f}"
+    return sub
 
 
 def main() -> None:
@@ -186,12 +213,13 @@ def main() -> None:
         if fer_csv.exists():
             fer_df = pd.read_csv(fer_csv)
             plot_fer(fer_df, out_dir / "10_fer.png")
-            best_fer_df = _best_case_fer_subset(fer_df)
-            if not best_fer_df.empty:
+            informative_fer_df = _informative_fer_subset(fer_df)
+            if not informative_fer_df.empty:
+                label = str(informative_fer_df.attrs.get("mcs_label", "selected MCS"))
                 plot_fer(
-                    best_fer_df,
-                    out_dir / "10a_fer_best_case.png",
-                    title="FER (lowest-order, lowest-rate MCS)",
+                    informative_fer_df,
+                    out_dir / "10a_fer_informative_case.png",
+                    title=f"FER ({label}, most informative MCS)",
                 )
 
     if scaling_dir is not None:
@@ -212,7 +240,10 @@ def main() -> None:
             if "rate_gap_bps_per_hz" in gap_df.columns:
                 plot_selectivity_gap(gap_df, out_dir / "13_selectivity_rate_gap.png")
             if "fairness_gap" in gap_df.columns:
-                plot_selectivity_gap(gap_df.rename(columns={"fairness_gap": "rate_gap_bps_per_hz"}), out_dir / "14_selectivity_fairness_gap.png")
+                plot_selectivity_gap(
+                    gap_df.rename(columns={"fairness_gap": "rate_gap_bps_per_hz"}),
+                    out_dir / "14_selectivity_fairness_gap.png",
+                )
 
     print(f"Saved figures to: {out_dir}")
 

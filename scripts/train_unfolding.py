@@ -30,10 +30,8 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-
 def _base_noise(cfg, snr_db: float) -> float:
     return float(cfg.derived["ue_noise_re_watt"]) * (10.0 ** (-float(snr_db) / 10.0))
-
 
 
 def _training_row(step: int, snr_db: float, loss: float, grad_norm: float, summary: Dict[str, float], mask_meta: Dict[str, float]) -> Dict[str, float]:
@@ -78,14 +76,11 @@ def _project_grads_to_variable_dtype(
             out.append(tf.zeros_like(v))
             continue
         if g.dtype.is_complex and not v.dtype.is_complex:
-            # TensorFlow otherwise emits repeated warnings and implicitly drops
-            # the imaginary component. Make that projection explicit.
             g = tf.math.real(g)
         if g.dtype != v.dtype:
             g = tf.cast(g, v.dtype)
         out.append(g)
     return out
-
 
 
 def main() -> None:
@@ -96,7 +91,6 @@ def main() -> None:
     paths = get_twc_paths(cfg)
     out_root = ensure_dir(Path(paths.output_root) / f"train_{args.variant}_{now_ts()}")
     ckpt_root = ensure_dir(paths.checkpoint_root)
-    local_ckpts = ensure_dir(out_root / "checkpoints")
     save_yaml(out_root / "config_resolved.yaml", cfg.to_dict())
     save_json(out_root / "meta.json", {"variant": args.variant})
 
@@ -108,6 +102,9 @@ def main() -> None:
     p_tot_watt = float(cfg.derived["bs_total_tx_power_watt"])
     rng = np.random.default_rng(int(cfg.raw["reproducibility"]["seed"]) + (11 if args.variant == "cognitive" else 3))
 
+    save_every = int(tr.get("save_every", 25))
+    local_ckpts = ensure_dir(out_root / "checkpoints") if save_every > 0 else None
+
     model = UnfoldedWeightedWMMSE(
         num_layers=int(unfold_cfg.get("num_layers", 8)),
         init_damping=float(unfold_cfg.get("init_damping", 0.85)),
@@ -118,7 +115,6 @@ def main() -> None:
 
     num_steps = int(tr.get("num_steps", 300))
     log_every = int(tr.get("log_every", 10))
-    save_every = int(tr.get("save_every", 25))
     grad_clip_norm = float(tr.get("grad_clip_norm", 5.0))
     snr_choices = list(tr.get("snr_db_choices", [-5.0, 0.0, 5.0]))
     sigma = float(tr.get("random_weight_sigma", 0.7))
@@ -202,7 +198,7 @@ def main() -> None:
             best_loss = loss_f
             model.save_npz(ckpt_root / f"{args.variant}.npz")
 
-        if step % save_every == 0:
+        if save_every > 0 and local_ckpts is not None and step % save_every == 0:
             model.save_npz(local_ckpts / f"{args.variant}_step{step:04d}.npz")
 
         if step % log_every == 0 or step == 1 or step == num_steps:

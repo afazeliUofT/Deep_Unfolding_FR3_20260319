@@ -93,6 +93,7 @@ def extended_metrics(
 
     sinr = tf.reshape(mmse.sinr, [batch, num_re_sim, -1])
     sinr_db = 10.0 * tf.math.log(tf.maximum(tf.cast(sinr, tf.float32), 1e-12)) / tf.math.log(10.0)
+    sinr_db_flat = sinr_db.numpy().reshape(-1)
 
     weighted_sum_rate = tf.reduce_sum(per_user)
     if current_weights is not None:
@@ -112,7 +113,9 @@ def extended_metrics(
         "p50_user_rate_bps_per_hz": float(np.percentile(per_user.numpy(), 50.0)),
         "jain_fairness": float(_jain_index(per_sample_user).numpy().mean()),
         "avg_sinr_db": float(tf.reduce_mean(sinr_db).numpy()),
-        "p05_sinr_db": float(np.percentile(sinr_db.numpy().reshape(-1), 5.0)),
+        "p05_sinr_db": float(np.percentile(sinr_db_flat, 5.0)),
+        "p50_sinr_db": float(np.percentile(sinr_db_flat, 50.0)),
+        "p75_sinr_db": float(np.percentile(sinr_db_flat, 75.0)),
         "coverage_rate": float(
             tf.reduce_mean(tf.cast(per_user >= coverage_rate_threshold_bpshz, tf.float32)).numpy()
         ),
@@ -155,7 +158,6 @@ def extended_metrics(
     else:
         i_max = tf.cast(fs.i_max_watt[None, :], tf.float32)
         viol = tf.maximum(fs_int - i_max, 0.0)
-        # Small tolerance avoids meaningless failures from machine precision at the threshold.
         tol = tf.maximum(1e-6 * i_max, tf.constant(1e-18, dtype=tf.float32))
         strict_ok = tf.cast(fs_int <= i_max, tf.float32)
         ok = tf.cast(fs_int <= (i_max + tol), tf.float32)

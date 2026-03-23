@@ -60,9 +60,13 @@ def main() -> None:
     fer_cfg = cfg.raw.get("twc", {}).get("fer", {}) or {}
     require_sionna = bool(fer_cfg.get("require_sionna", False))
     allow_fallback = bool(fer_cfg.get("allow_fallback", not require_sionna))
+    sinr_metric = str(fer_cfg.get("sinr_metric", "p50_sinr_db"))
+    fallback_sinr_cols = list(fer_cfg.get("fallback_sinr_cols", ["avg_sinr_db", "p05_sinr_db", "avg_user_rate_bps_per_hz"]))
 
     fer_df = fer_from_algorithm_summary(
         summary_mean,
+        sinr_col=sinr_metric,
+        fallback_sinr_cols=fallback_sinr_cols,
         modulation_orders=list(fer_cfg.get("modulation_orders", [2, 4])),
         code_rates=list(fer_cfg.get("code_rates", [0.3, 0.5])),
         k_bits=int(fer_cfg.get("k_bits", 1024)),

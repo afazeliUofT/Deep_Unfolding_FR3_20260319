@@ -52,9 +52,21 @@ class UnfoldedWeightedWMMSE(tf.Module):
         mu_raw = np.log(np.exp(max(init_dual_step_mu, eps)) - 1.0)
         lam_raw = np.log(np.exp(max(init_dual_step_lambda, eps)) - 1.0)
 
-        self.raw_damping = tf.Variable(np.full([self.num_layers], damp_logit, dtype=np.float32), trainable=True, name="raw_damping")
-        self.raw_dual_step_mu = tf.Variable(np.full([self.num_layers], mu_raw, dtype=np.float32), trainable=True, name="raw_dual_step_mu")
-        self.raw_dual_step_lambda = tf.Variable(np.full([self.num_layers], lam_raw, dtype=np.float32), trainable=True, name="raw_dual_step_lambda")
+        self.raw_damping = tf.Variable(
+            np.full([self.num_layers], damp_logit, dtype=np.float32),
+            trainable=True,
+            name="raw_damping",
+        )
+        self.raw_dual_step_mu = tf.Variable(
+            np.full([self.num_layers], mu_raw, dtype=np.float32),
+            trainable=True,
+            name="raw_dual_step_mu",
+        )
+        self.raw_dual_step_lambda = tf.Variable(
+            np.full([self.num_layers], lam_raw, dtype=np.float32),
+            trainable=True,
+            name="raw_dual_step_lambda",
+        )
 
     @property
     def damping(self) -> tf.Tensor:
@@ -130,6 +142,20 @@ class UnfoldedWeightedWMMSE(tf.Module):
         return model
 
 
+def _normalized_excess_penalty(x: tf.Tensor, budget: tf.Tensor | float, eps: float = 1e-12) -> tf.Tensor:
+    """Penalty on relative budget violation, in a numerically balanced scale.
+
+    The previous loss used absolute watts, which is too small for the FS
+    thresholds here (~1e-14 W). That makes the FS term almost invisible during
+    training even when the budget is violated by tens of dB.
+    """
+    x = tf.cast(x, tf.float32)
+    budget = tf.cast(budget, tf.float32)
+    ratio = x / tf.maximum(budget, tf.cast(eps, tf.float32))
+    excess = tf.nn.relu(ratio - 1.0)
+    return tf.square(tf.math.log1p(excess))
+
+
 def differentiable_loss(
     *,
     cfg: ResolvedConfig,
@@ -157,17 +183,22 @@ def differentiable_loss(
 
     pow_t_b = tf.reduce_sum(tf.abs(result.w) ** 2, axis=[3, 4])
     pow_b = tf.cast(re_scaling, tf.float32) * tf.reduce_sum(tf.cast(pow_t_b, tf.float32), axis=1)
-    power_penalty = tf.reduce_mean(tf.square(tf.nn.relu(pow_b - p_tot_watt)))
+    power_penalty = tf.reduce_mean(_normalized_excess_penalty(pow_b, p_tot_watt))
 
     if fs is None or int(result.lam.shape[-1]) == 0:
         fs_penalty = tf.cast(0.0, tf.float32)
     else:
         I_fs = compute_fs_interference(result.w, fs=fs, re_scaling=re_scaling)
         i_max = tf.cast(fs.i_max_watt[None, :], tf.float32)
-        fs_penalty = tf.reduce_mean(tf.square(tf.nn.relu(I_fs - i_max)))
+        fs_penalty = tf.reduce_mean(_normalized_excess_penalty(I_fs, i_max))
 
     smooth_penalty = tf.reduce_mean(tf.square(model.damping[1:] - model.damping[:-1]))
     smooth_penalty += tf.reduce_mean(tf.square(model.dual_step_mu[1:] - model.dual_step_mu[:-1]))
     smooth_penalty += tf.reduce_mean(tf.square(model.dual_step_lambda[1:] - model.dual_step_lambda[:-1]))
 
-    return -weighted_sum_rate + lambda_power * power_penalty + lambda_fs * fs_penalty + lambda_smooth * smooth_penalty
+    return (
+        -weighted_sum_rate
+        + lambda_power * power_penalty
+        + lambda_fs * fs_penalty
+        + lambda_smooth * smooth_penalty
+    )

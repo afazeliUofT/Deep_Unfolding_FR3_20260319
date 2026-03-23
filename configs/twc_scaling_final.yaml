@@ -4,7 +4,7 @@ system_model:
   num_re_sim: 16
 
 experiment:
-  num_batches: 16
+  num_batches: 20
   freeze_topology: false
 
 sweep:
@@ -14,7 +14,7 @@ sweep:
 
 twc:
   scaling:
-    num_bs_ant_values: [16, 32, 64]
+    num_bs_ant_values: [16, 32, 64, 96]
     num_ut_per_sector_values: [4, 6, 8]
     sweep_value_db: 5.0
-    num_batches: 16
+    num_batches: 20

@@ -1,0 +1,22 @@
+2026-03-23 05:39:47.099833: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:485] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2026-03-23 05:39:47.271988: E external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:8454] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2026-03-23 05:39:47.329024: E external/local_xla/xla/stream_executor/cuda/cuda_blas.cc:1452] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2026-03-23 05:39:47.843767: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2026-03-23 05:39:51.425394: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Could not find TensorRT
+2026-03-23 05:39:58.236947: W tensorflow/core/common_runtime/gpu/gpu_bfc_allocator.cc:47] Overriding orig_value setting because the TF_FORCE_GPU_ALLOW_GROWTH environment variable is set. Original config value was 0.
+2026-03-23 05:39:58.238164: I tensorflow/core/common_runtime/gpu/gpu_device.cc:2021] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 38484 MB memory:  -> device: 0, name: NVIDIA A100-SXM4-40GB, pci bus id: 0000:41:00.0, compute capability: 8.0
+2026-03-23 05:40:00.835492: I tensorflow/core/util/cuda_solvers.cc:178] Creating GpuSolver handles for stream 0x55b4989a25f0
+finished scaling point M=16 K=4 -> results_twc/scaling_20260323_053958/subruns/M16_K4_20260323_053958
+finished scaling point M=16 K=6 -> results_twc/scaling_20260323_053958/subruns/M16_K6_20260323_061249
+finished scaling point M=16 K=8 -> results_twc/scaling_20260323_053958/subruns/M16_K8_20260323_064536
+finished scaling point M=32 K=4 -> results_twc/scaling_20260323_053958/subruns/M32_K4_20260323_071821
+finished scaling point M=32 K=6 -> results_twc/scaling_20260323_053958/subruns/M32_K6_20260323_075105
+finished scaling point M=32 K=8 -> results_twc/scaling_20260323_053958/subruns/M32_K8_20260323_082345
+finished scaling point M=64 K=4 -> results_twc/scaling_20260323_053958/subruns/M64_K4_20260323_085605
+finished scaling point M=64 K=6 -> results_twc/scaling_20260323_053958/subruns/M64_K6_20260323_092819
+finished scaling point M=64 K=8 -> results_twc/scaling_20260323_053958/subruns/M64_K8_20260323_100036
+finished scaling point M=96 K=4 -> results_twc/scaling_20260323_053958/subruns/M96_K4_20260323_103300
+finished scaling point M=96 K=6 -> results_twc/scaling_20260323_053958/subruns/M96_K6_20260323_110533
+finished scaling point M=96 K=8 -> results_twc/scaling_20260323_053958/subruns/M96_K8_20260323_113800
+Saved scaling suite to: results_twc/scaling_20260323_053958

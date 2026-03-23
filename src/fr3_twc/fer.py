@@ -24,8 +24,6 @@ class FerCurveResult:
 def _import_sionna_blocks() -> Dict[str, Any]:
     errs: list[str] = []
 
-    # Sionna 1.2.x / sionna-no-rt 1.2.x public API.
-    # BinarySource is part of the mapping module, not sionna.phy.utils.
     try:
         import sionna  # type: ignore
         import tensorflow as tf  # type: ignore
@@ -47,7 +45,6 @@ def _import_sionna_blocks() -> Dict[str, Any]:
     except Exception as e:
         errs.append(f"sionna.phy public API import failed: {e}")
 
-    # Fallback for the same Sionna generation via submodule imports.
     try:
         import sionna  # type: ignore
         import tensorflow as tf  # type: ignore
@@ -172,8 +169,6 @@ def simulate_5g_nr_fer_curve(
         LDPC5GEncoder = blk["LDPC5GEncoder"]
         LDPC5GDecoder = blk["LDPC5GDecoder"]
 
-        # Use the modulation order in the encoder so the 5G LDPC output
-        # interleaver matches the selected QAM order.
         encoder = LDPC5GEncoder(
             k_bits,
             n_bits,
@@ -287,32 +282,52 @@ def simulate_5g_nr_fer_curve(
         )
 
 
+def _extract_numeric_column(df_algo: pd.DataFrame, col: str) -> list[float] | None:
+    if col not in df_algo.columns:
+        return None
+    vals = pd.to_numeric(df_algo[col], errors="coerce").to_numpy(dtype=float)
+    if not np.isfinite(vals).any():
+        return None
+    return list(vals.astype(float))
+
+
+def _rate_to_sinr(df_algo: pd.DataFrame) -> list[float] | None:
+    if "avg_user_rate_bps_per_hz" not in df_algo.columns:
+        return None
+    avg_rate = pd.to_numeric(
+        df_algo["avg_user_rate_bps_per_hz"], errors="coerce"
+    ).to_numpy(dtype=float)
+    if not np.isfinite(avg_rate).any():
+        return None
+    sinr_lin = np.maximum(np.power(2.0, avg_rate) - 1.0, 1e-9)
+    return list((10.0 * np.log10(sinr_lin)).astype(float))
+
+
 def _infer_fer_input_sinr_db(
     df_algo: pd.DataFrame,
     *,
     requested_col: str,
+    fallback_cols: Sequence[str] = ("avg_sinr_db", "p05_sinr_db", "avg_user_rate_bps_per_hz"),
 ) -> tuple[list[float], str]:
-    if requested_col in df_algo.columns:
-        vals = pd.to_numeric(df_algo[requested_col], errors="coerce").to_numpy(dtype=float)
-        if np.isfinite(vals).any():
-            if requested_col == "avg_sinr_db" and "avg_user_rate_bps_per_hz" in df_algo.columns:
-                avg_rate = pd.to_numeric(
-                    df_algo["avg_user_rate_bps_per_hz"], errors="coerce"
-                ).to_numpy(dtype=float)
-                # If the saved avg_sinr is deeply negative while the saved mean rate is high,
-                # the AWGN FER abstraction is better driven by a rate-equivalent SINR.
-                if np.nanmedian(vals) < -3.0 and np.nanmedian(avg_rate) > 1.5:
-                    sinr_lin = np.maximum(np.power(2.0, avg_rate) - 1.0, 1e-9)
-                    return list((10.0 * np.log10(sinr_lin)).astype(float)), "rate_inversion"
-            return list(vals.astype(float)), requested_col
+    """Choose the FER-driving SINR metric.
 
-    if "avg_user_rate_bps_per_hz" in df_algo.columns:
-        avg_rate = pd.to_numeric(
-            df_algo["avg_user_rate_bps_per_hz"], errors="coerce"
-        ).to_numpy(dtype=float)
-        if np.isfinite(avg_rate).any():
-            sinr_lin = np.maximum(np.power(2.0, avg_rate) - 1.0, 1e-9)
-            return list((10.0 * np.log10(sinr_lin)).astype(float)), "rate_inversion"
+    The previous repo would automatically replace ``avg_sinr_db`` by a
+    rate-inverted SINR whenever the two looked inconsistent. In the current
+    outputs that produced trivial FER curves (mostly all-zero). Here we use the
+    requested metric directly if it exists, and only fall back when it is
+    missing.
+    """
+    candidates = [str(requested_col)] + [str(c) for c in fallback_cols if str(c) != str(requested_col)]
+    for col in candidates:
+        if col == "avg_user_rate_bps_per_hz":
+            vals = _rate_to_sinr(df_algo)
+            if vals is not None:
+                return vals, "rate_inversion"
+            continue
+
+        vals = _extract_numeric_column(df_algo, col)
+        if vals is not None:
+            return vals, str(col)
 
     raise KeyError(f"Could not infer FER SINR input from columns: {list(df_algo.columns)}")
 
@@ -322,7 +337,8 @@ def fer_from_algorithm_summary(
     *,
     algorithm_col: str = "algorithm",
     sweep_col: str = "sweep_value",
-    sinr_col: str = "avg_sinr_db",
+    sinr_col: str = "p50_sinr_db",
+    fallback_sinr_cols: Sequence[str] = ("avg_sinr_db", "p05_sinr_db", "avg_user_rate_bps_per_hz"),
     modulation_orders: Sequence[int] = (2, 4),
     code_rates: Sequence[float] = (0.3, 0.5),
     k_bits: int = 1024,
@@ -337,6 +353,7 @@ def fer_from_algorithm_summary(
         sinr_points, sinr_source = _infer_fer_input_sinr_db(
             df_algo,
             requested_col=sinr_col,
+            fallback_cols=fallback_sinr_cols,
         )
         sweep_points = list(df_algo[sweep_col].tolist())
         for m in modulation_orders:
