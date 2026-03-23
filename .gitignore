@@ -4,5 +4,3 @@ __pycache__/
 *.pyo
 *.egg-info/
 fr3_twc_*.zip
-
-logs/*.out
