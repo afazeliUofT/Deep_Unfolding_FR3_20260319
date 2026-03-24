@@ -1,0 +1,28 @@
+2026-03-23 22:45:19.140057: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:485] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2026-03-23 22:45:19.311396: E external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:8454] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2026-03-23 22:45:19.363405: E external/local_xla/xla/stream_executor/cuda/cuda_blas.cc:1452] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2026-03-23 22:45:19.770743: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2026-03-23 22:45:23.071064: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Could not find TensorRT
+2026-03-23 22:45:29.314848: W tensorflow/core/common_runtime/gpu/gpu_bfc_allocator.cc:47] Overriding orig_value setting because the TF_FORCE_GPU_ALLOW_GROWTH environment variable is set. Original config value was 0.
+2026-03-23 22:45:29.317941: I tensorflow/core/common_runtime/gpu/gpu_device.cc:2021] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 38484 MB memory:  -> device: 0, name: NVIDIA A100-SXM4-40GB, pci bus id: 0000:c1:00.0, compute capability: 8.0
+2026-03-23 22:45:32.268109: I tensorflow/core/util/cuda_solvers.cc:178] Creating GpuSolver handles for stream 0x55697f331e50
+Traceback (most recent call last):
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/src/fr3_twc/fer.py", line 172, in simulate_5g_nr_fer_curve
+    encoder = LDPC5GEncoder(
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/venv_fr3_twc/lib/python3.10/site-packages/sionna/phy/fec/ldpc/encoding.py", line 102, in __init__
+    raise ValueError("Unsupported coderate (r<1/5).")
+ValueError: Unsupported coderate (r<1/5).
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/scripts/eval_unfolding.py", line 99, in <module>
+    main()
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/scripts/eval_unfolding.py", line 66, in main
+    fer_df = fer_from_algorithm_summary(
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/src/fr3_twc/fer.py", line 361, in fer_from_algorithm_summary
+    curve = simulate_5g_nr_fer_curve(
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/src/fr3_twc/fer.py", line 253, in simulate_5g_nr_fer_curve
+    raise RuntimeError(f"Sionna FER failed: {err}") from e
+RuntimeError: Sionna FER failed: Unsupported coderate (r<1/5).

@@ -41,6 +41,24 @@ def _complex_normal(shape, dtype: tf.dtypes.DType) -> tf.Tensor:
         return tf.complex(re, im) / tf.cast(tf.sqrt(2.0), dtype)
 
 
+def _to_complex_tensor(x: tf.Tensor | float, complex_dtype: tf.dtypes.DType) -> tf.Tensor:
+    """Convert real or complex input to complex dtype without cast-back warnings.
+
+    Using tf.cast(real, complex) inside a GradientTape often causes TensorFlow to
+    emit repeated complex->real warnings during backprop. Building the complex
+    tensor explicitly with zero imaginary part keeps the same math and makes the
+    gradient projection to the real source explicit.
+    """
+    x = tf.convert_to_tensor(x)
+    if x.dtype == complex_dtype:
+        return x
+    if x.dtype.is_complex:
+        return tf.cast(x, complex_dtype)
+    real_dtype = tf.float32 if complex_dtype == tf.complex64 else tf.float64
+    xr = tf.cast(x, real_dtype)
+    return tf.complex(xr, tf.zeros_like(xr))
+
+
 def _extract_self_channels(H: tf.Tensor, u_per_bs: int) -> tf.Tensor:
     S = tf.shape(H)[0]
     B = tf.shape(H)[1]
@@ -100,7 +118,7 @@ def _compute_fs_interference_from_w_full(
 
     corr = getattr(fs, "correlation", "identity")
     if corr == "steering_rank1" and getattr(fs, "a_bs_fs", None) is not None:
-        a = tf.cast(fs.a_bs_fs, w_full.dtype)  # [S,B,L,M]
+        a = _to_complex_tensor(fs.a_bs_fs, w_full.dtype)  # [S,B,L,M]
         proj = tf.einsum(
             "sblm,stbmu->stblu",
             tf.math.conj(a),
@@ -167,7 +185,7 @@ def _soft_fs_budget_repair(
                 tf.ones_like(ratio),
             )
             alpha_batch = tf.reduce_min(alpha_per_l, axis=-1)
-            w_full = w_full * tf.cast(alpha_batch[:, tf.newaxis, tf.newaxis, tf.newaxis, tf.newaxis], w_full.dtype)
+            w_full = w_full * _to_complex_tensor(alpha_batch[:, tf.newaxis, tf.newaxis, tf.newaxis, tf.newaxis], w_full.dtype)
         I_fs = _compute_fs_interference_from_w_full(w_full, fs, re_scaling, real_dtype)
         return w_full, I_fs
 
@@ -178,7 +196,7 @@ def _soft_fs_budget_repair(
     U = tf.shape(w_full)[4]
     L = int(fs.bar_beta.shape[-1])
 
-    a = tf.cast(fs.a_bs_fs, w_full.dtype)
+    a = _to_complex_tensor(fs.a_bs_fs, w_full.dtype)
     a_eff = tf.reshape(
         tf.tile(a[:, tf.newaxis, ...], [1, T, 1, 1, 1]),
         [batch * T, B, L, M],
@@ -199,7 +217,7 @@ def _soft_fs_budget_repair(
         for l in range(L):
             a_l = a_eff[:, :, l, :]  # [S_eff,B,M]
             coeff = tf.einsum("sbm,sbmu->sbu", tf.math.conj(a_l), w_eff, optimize=True)
-            shrink = tf.cast((1.0 - alpha_eff[:, l])[:, tf.newaxis, tf.newaxis, tf.newaxis], w_full.dtype)
+            shrink = _to_complex_tensor((1.0 - alpha_eff[:, l])[:, tf.newaxis, tf.newaxis, tf.newaxis], w_full.dtype)
             correction = shrink * a_l[:, :, :, tf.newaxis] * coeff[:, :, tf.newaxis, :]
             w_eff = w_eff - correction
         w_full = tf.reshape(w_eff, [batch, T, B, M, U])
@@ -276,13 +294,13 @@ def weighted_wmmse_solve(
     xi = _prepare_user_weights(user_weights, batch=batch, T=T, U=U, real_dtype=real_dtype)
 
     if init_w is not None:
-        w = tf.cast(init_w, complex_dtype)
+        w = _to_complex_tensor(init_w, complex_dtype)
     else:
         w0 = _complex_normal([S_eff, B, M, u_per_bs], dtype=complex_dtype)
         pow_b = tf.reduce_sum(tf.abs(w0) ** 2, axis=[2, 3])
         target = tf.cast(p_tot_watt / (re_scaling * T), real_dtype)
         scale = tf.sqrt(target / (tf.cast(pow_b, real_dtype) + 1e-12))
-        w = w0 * tf.cast(scale[:, :, tf.newaxis, tf.newaxis], complex_dtype)
+        w = w0 * _to_complex_tensor(scale[:, :, tf.newaxis, tf.newaxis], complex_dtype)
 
     mu_init = float(w_cfg.get("mu_init", 1.0))
     lam_init = float(w_cfg.get("lambda_init", 0.0))
@@ -333,16 +351,16 @@ def weighted_wmmse_solve(
         q = xi / tf.cast(mmse.mse, real_dtype)
 
         q_bu = tf.reshape(q, [S_eff, B, u_per_bs])
-        v_bu = tf.reshape(tf.cast(mmse.v, complex_dtype), [S_eff, B, u_per_bs, Nr])
+        v_bu = tf.reshape(_to_complex_tensor(mmse.v, complex_dtype), [S_eff, B, u_per_bs, Nr])
         H_self = _extract_self_channels(H_eff, u_per_bs=u_per_bs)
         a_self = tf.einsum("sburm,sbur->sbum", tf.math.conj(H_self), v_bu, optimize=True)
 
-        v_all = tf.cast(mmse.v, complex_dtype)
+        v_all = _to_complex_tensor(mmse.v, complex_dtype)
         a_all = tf.einsum("sburm,sur->sbum", tf.math.conj(H_eff), v_all, optimize=True)
         sqrt_q_all = tf.sqrt(tf.maximum(tf.cast(q, real_dtype), 0.0))
-        x_all = tf.cast(sqrt_q_all[:, tf.newaxis, :, tf.newaxis], complex_dtype) * a_all
+        x_all = _to_complex_tensor(sqrt_q_all[:, tf.newaxis, :, tf.newaxis], complex_dtype) * a_all
         D_signal = tf.einsum("sbum,sbun->sbmn", x_all, tf.math.conj(x_all), optimize=True)
-        C = tf.einsum("sbu,sbum->sbmu", tf.cast(q_bu, complex_dtype), a_self, optimize=True)
+        C = tf.einsum("sbu,sbum->sbmu", _to_complex_tensor(q_bu, complex_dtype), a_self, optimize=True)
 
         R_fs = None
         f_eff = None
@@ -361,10 +379,10 @@ def weighted_wmmse_solve(
             g_eff = tf.reshape(tf.transpose(g, [0, 2, 1, 3]), [S_eff, B, L])
             corr = getattr(fs, "correlation", "identity")
             if corr == "steering_rank1" and getattr(fs, "a_bs_fs", None) is not None:
-                a = tf.cast(fs.a_bs_fs, complex_dtype)
+                a = _to_complex_tensor(fs.a_bs_fs, complex_dtype)
                 a_eff = tf.reshape(tf.tile(a[:, tf.newaxis, ...], [1, T, 1, 1, 1]), [S_eff, B, L, M])
                 sqrt_g = tf.sqrt(tf.maximum(g_eff, 0.0))
-                u = tf.cast(sqrt_g[..., tf.newaxis], complex_dtype) * a_eff
+                u = _to_complex_tensor(sqrt_g[..., tf.newaxis], complex_dtype) * a_eff
                 R_fs = tf.einsum("sblm,sbln->sbmn", u, tf.math.conj(u), optimize=True)
             else:
                 f_eff = tf.reduce_sum(g_eff, axis=-1)
@@ -372,16 +390,16 @@ def weighted_wmmse_solve(
         mu_eff = tf.reshape(tf.tile(mu[:, tf.newaxis, :], [1, T, 1]), [S_eff, B])
         diag_add = tf.cast(re_scaling, real_dtype) * mu_eff + tf.cast(ridge, real_dtype)
         I = tf.eye(M, batch_shape=tf.shape(D_signal)[:-2], dtype=complex_dtype)
-        D = D_signal + tf.cast(diag_add[:, :, tf.newaxis, tf.newaxis], complex_dtype) * I
+        D = D_signal + _to_complex_tensor(diag_add[:, :, tf.newaxis, tf.newaxis], complex_dtype) * I
         if R_fs is not None:
             D = D + R_fs
         elif f_eff is not None:
-            D = D + tf.cast(f_eff[:, :, tf.newaxis, tf.newaxis], complex_dtype) * I
+            D = D + _to_complex_tensor(f_eff[:, :, tf.newaxis, tf.newaxis], complex_dtype) * I
 
         w_new = tf.linalg.solve(D, C)
 
         damping = _step_param(layer_params.damping if layer_params else None, k, damping_base)
-        w = tf.cast(damping, complex_dtype) * w_new + tf.cast(1.0 - damping, complex_dtype) * w_prev
+        w = _to_complex_tensor(damping, complex_dtype) * w_new + _to_complex_tensor(1.0 - damping, complex_dtype) * w_prev
 
         # Optional hard null projection
         if fs is not None and getattr(fs, "a_bs_fs", None) is not None and fs_mode in ("hard_null", "hybrid"):
@@ -393,12 +411,12 @@ def weighted_wmmse_solve(
                 do_null = bool((ratio > hard_null_thresh).numpy())
 
             if do_null:
-                a = tf.cast(fs.a_bs_fs, complex_dtype)
+                a = _to_complex_tensor(fs.a_bs_fs, complex_dtype)
                 a_eff = tf.reshape(tf.tile(a[:, tf.newaxis, ...], [1, T, 1, 1, 1]), [S_eff, B, L, M])
                 G = tf.einsum("sblm,sbkm->sblk", tf.math.conj(a_eff), a_eff, optimize=True)
-                reg = tf.cast(float(w_cfg.get("aggressive_fs_nulling_reg", 1e-6)), complex_dtype)
+                reg = _to_complex_tensor(float(w_cfg.get("aggressive_fs_nulling_reg", 1e-6)), complex_dtype)
                 I_L = tf.eye(L, batch_shape=[S_eff, B], dtype=complex_dtype)
-                G_reg = tf.cast(G, complex_dtype) + reg * I_L
+                G_reg = _to_complex_tensor(G, complex_dtype) + reg * I_L
                 Aw = tf.einsum("sblm,sbmu->sblu", tf.math.conj(a_eff), w, optimize=True)
                 x = tf.linalg.lstsq(G_reg, Aw, fast=False)
                 correction = tf.einsum("sblm,sblu->sbmu", a_eff, x, optimize=True)
@@ -414,7 +432,7 @@ def weighted_wmmse_solve(
         scale = tf.sqrt(p_tot_watt / tf.maximum(pow_b_raw, tf.cast(1e-12, real_dtype)))
         scale = tf.minimum(scale, 1.0)
         scale = tf.where(pow_b_raw > p_tot_watt, scale * tf.cast(1.0 - 1e-6, real_dtype), scale)
-        w_full = w_full * tf.cast(scale[:, tf.newaxis, :, tf.newaxis, tf.newaxis], complex_dtype)
+        w_full = w_full * _to_complex_tensor(scale[:, tf.newaxis, :, tf.newaxis, tf.newaxis], complex_dtype)
         w = tf.reshape(w_full, [S_eff, B, M, u_per_bs])
         pow_b = tf.cast(re_scaling, real_dtype) * tf.reduce_sum(
             tf.cast(tf.reduce_sum(tf.abs(w_full) ** 2, axis=[3, 4]), real_dtype),
