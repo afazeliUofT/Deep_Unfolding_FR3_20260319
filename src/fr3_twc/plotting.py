@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable, Optional, Sequence
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -84,7 +84,8 @@ def plot_convergence(
     p = _prep_out(out_path)
     df = history_df.copy()
     if select_sweep is None and sweep_col in df.columns:
-        select_sweep = sorted(df[sweep_col].unique())[len(df[sweep_col].unique()) // 2]
+        uniq = sorted(df[sweep_col].unique())
+        select_sweep = uniq[len(uniq) // 2]
     if sweep_col in df.columns and select_sweep is not None:
         df = df[df[sweep_col] == select_sweep]
 
@@ -116,7 +117,12 @@ def plot_fer(
     ax = fig.add_subplot(1, 1, 1)
     for (algo, m, r), sub in fer_df.groupby([algo_col, "modulation_order", "code_rate"]):
         sub = sub.sort_values(sweep_col)
-        ax.semilogy(sub[sweep_col].to_numpy(), np.maximum(sub["fer"].to_numpy(), 1e-6), marker="o", label=f"{algo} | {m}-bit | R={r:.2f}")
+        ax.semilogy(
+            sub[sweep_col].to_numpy(),
+            np.maximum(sub["fer"].to_numpy(), 1.0e-6),
+            marker="o",
+            label=f"{algo} | {m}-bit | R={r:.2f}",
+        )
     ax.set_title(title)
     ax.set_xlabel(sweep_col)
     ax.set_ylabel("FER")
@@ -159,6 +165,8 @@ def plot_selectivity_gap(
     x_col: str = "tau_rms_ns",
     y_col: str = "rate_gap_bps_per_hz",
     hue_col: str = "algorithm",
+    title: Optional[str] = None,
+    ylabel: Optional[str] = None,
     dpi: int = 220,
 ) -> Path:
     p = _prep_out(out_path)
@@ -167,9 +175,9 @@ def plot_selectivity_gap(
     for algo, sub in df.groupby(hue_col):
         sub = sub.sort_values(x_col)
         ax.plot(sub[x_col].to_numpy(), sub[y_col].to_numpy(), marker="o", label=str(algo))
-    ax.set_title("Flat-to-selective rate gap")
+    ax.set_title(title or "Flat-to-selective gap")
     ax.set_xlabel("RMS delay spread [ns]")
-    ax.set_ylabel(y_col)
+    ax.set_ylabel(ylabel or y_col)
     ax.grid(True)
     ax.legend()
     fig.savefig(p, dpi=dpi, bbox_inches="tight")

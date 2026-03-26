@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-import _repo_bootstrap as _rb
-
-_rb.bootstrap()
-
 import argparse
 import shutil
 from pathlib import Path
@@ -12,8 +8,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+import _repo_bootstrap as _rb
+
+_rb.bootstrap()
+
 from fr3_twc.common import ensure_dir, now_ts
-from fr3_twc.plotting import plot_convergence, plot_fer, plot_metric_vs_sweep, plot_scaling_heatmap, plot_selectivity_gap
+from fr3_twc.plotting import (
+    plot_convergence,
+    plot_fer,
+    plot_metric_vs_sweep,
+    plot_scaling_heatmap,
+    plot_selectivity_gap,
+)
 from fr3_twc.reporting import latest_prefixed_dir
 
 
@@ -55,6 +61,7 @@ def _pareto_plot(df: pd.DataFrame, out_path: Path) -> None:
     fairness = _fairness_col(df)
     if fairness is None or "protection_satisfaction" not in df.columns:
         return
+
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     for algo, sub in df.groupby("algorithm"):
@@ -108,8 +115,8 @@ def _informative_fer_subset(fer_df: pd.DataFrame, target_fer: float = 1.0e-1) ->
         vals = vals[np.isfinite(vals)]
         if vals.size == 0:
             continue
-        median_fer = float(np.median(np.clip(vals, 1e-6, 1.0)))
-        score = abs(np.log10(median_fer) - np.log10(max(target_fer, 1e-6)))
+        median_fer = float(np.median(np.clip(vals, 1.0e-6, 1.0)))
+        score = abs(np.log10(median_fer) - np.log10(max(target_fer, 1.0e-6)))
         rows.append(
             {
                 "modulation_order": int(mod_order),
@@ -210,17 +217,20 @@ def main() -> None:
                 plot_convergence(h, "final_history_weighted_sum_rate", out_dir / "09_convergence_wsr.png")
 
         fer_csv = eval_dir / "fer.csv"
-        if fer_csv.exists():
-            fer_df = pd.read_csv(fer_csv)
-            plot_fer(fer_df, out_dir / "10_fer.png")
-            informative_fer_df = _informative_fer_subset(fer_df)
-            if not informative_fer_df.empty:
-                label = str(informative_fer_df.attrs.get("mcs_label", "selected MCS"))
-                plot_fer(
-                    informative_fer_df,
-                    out_dir / "10a_fer_informative_case.png",
-                    title=f"FER ({label}, most informative MCS)",
-                )
+        if not fer_csv.exists():
+            raise FileNotFoundError(
+                f"Missing FER file: {fer_csv}. Refusing to generate final figures without FER."
+            )
+        fer_df = pd.read_csv(fer_csv)
+        plot_fer(fer_df, out_dir / "10_fer.png")
+        informative_fer_df = _informative_fer_subset(fer_df)
+        if not informative_fer_df.empty:
+            label = str(informative_fer_df.attrs.get("mcs_label", "selected MCS"))
+            plot_fer(
+                informative_fer_df,
+                out_dir / "10a_fer_informative_case.png",
+                title=f"FER ({label}, most informative MCS)",
+            )
 
     if scaling_dir is not None:
         scaling_csv = _pick_csv(scaling_dir, "summary_mean.csv", "summary.csv")
@@ -238,11 +248,20 @@ def main() -> None:
         if gap_csv is not None:
             gap_df = pd.read_csv(gap_csv)
             if "rate_gap_bps_per_hz" in gap_df.columns:
-                plot_selectivity_gap(gap_df, out_dir / "13_selectivity_rate_gap.png")
+                plot_selectivity_gap(
+                    gap_df,
+                    out_dir / "13_selectivity_rate_gap.png",
+                    y_col="rate_gap_bps_per_hz",
+                    title="Flat-to-selective rate gap",
+                    ylabel="rate_gap_bps_per_hz",
+                )
             if "fairness_gap" in gap_df.columns:
                 plot_selectivity_gap(
-                    gap_df.rename(columns={"fairness_gap": "rate_gap_bps_per_hz"}),
+                    gap_df,
                     out_dir / "14_selectivity_fairness_gap.png",
+                    y_col="fairness_gap",
+                    title="Flat-to-selective fairness gap",
+                    ylabel="fairness_gap",
                 )
 
     print(f"Saved figures to: {out_dir}")

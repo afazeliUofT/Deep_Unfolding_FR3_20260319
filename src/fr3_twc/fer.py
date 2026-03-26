@@ -4,8 +4,13 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Sequence
 
 import math
+
 import numpy as np
 import pandas as pd
+
+
+_MIN_SIONNA_EFFECTIVE_CODE_RATE = 1.0 / 5.0
+_SIONNA_RATE_TOL = 1.0e-12
 
 
 @dataclass(frozen=True)
@@ -21,15 +26,69 @@ class FerCurveResult:
     rows: List[Dict[str, Any]]
 
 
+def _aligned_n_bits(k_bits: int, code_rate: float, modulation_order: int) -> int:
+    n_bits = int(math.ceil(int(k_bits) / max(float(code_rate), 1.0e-6)))
+    n_bits += (-n_bits) % int(modulation_order)
+    return int(n_bits)
+
+
+def _effective_code_rate(k_bits: int, *, n_bits: int) -> float:
+    return float(int(k_bits) / max(int(n_bits), 1))
+
+
+def _invalid_sionna_fer_grid_messages(
+    *,
+    modulation_orders: Sequence[int],
+    code_rates: Sequence[float],
+    k_bits: int,
+) -> list[str]:
+    msgs: list[str] = []
+    for m in modulation_orders:
+        m_int = int(m)
+        if m_int <= 0:
+            msgs.append(f"invalid modulation order {m!r}")
+            continue
+        for r in code_rates:
+            r_float = float(r)
+            if not math.isfinite(r_float) or r_float <= 0.0:
+                msgs.append(f"invalid code rate {r!r}")
+                continue
+            n_bits = _aligned_n_bits(k_bits=int(k_bits), code_rate=r_float, modulation_order=m_int)
+            eff_rate = _effective_code_rate(int(k_bits), n_bits=n_bits)
+            if eff_rate + _SIONNA_RATE_TOL < _MIN_SIONNA_EFFECTIVE_CODE_RATE:
+                msgs.append(
+                    "unsupported Sionna FER grid entry: "
+                    f"modulation_order={m_int}, requested_code_rate={r_float:.6f}, "
+                    f"k_bits={int(k_bits)}, aligned_n_bits={n_bits}, "
+                    f"effective_code_rate={eff_rate:.6f} < 0.200000"
+                )
+    return msgs
+
+
+def validate_sionna_fer_grid(
+    *,
+    modulation_orders: Sequence[int],
+    code_rates: Sequence[float],
+    k_bits: int,
+) -> None:
+    msgs = _invalid_sionna_fer_grid_messages(
+        modulation_orders=modulation_orders,
+        code_rates=code_rates,
+        k_bits=k_bits,
+    )
+    if msgs:
+        raise ValueError("Invalid FER grid for strict Sionna evaluation: " + " | ".join(msgs))
+
+
 def _import_sionna_blocks() -> Dict[str, Any]:
     errs: list[str] = []
 
     try:
         import sionna  # type: ignore
         import tensorflow as tf  # type: ignore
-        from sionna.phy.mapping import BinarySource, Mapper, Demapper  # type: ignore
         from sionna.phy.channel import AWGN  # type: ignore
-        from sionna.phy.fec.ldpc import LDPC5GEncoder, LDPC5GDecoder  # type: ignore
+        from sionna.phy.fec.ldpc import LDPC5GDecoder, LDPC5GEncoder  # type: ignore
+        from sionna.phy.mapping import BinarySource, Demapper, Mapper  # type: ignore
 
         return {
             "BinarySource": BinarySource,
@@ -42,16 +101,16 @@ def _import_sionna_blocks() -> Dict[str, Any]:
             "backend": "sionna.phy",
             "sionna_version": str(getattr(sionna, "__version__", "unknown")),
         }
-    except Exception as e:
+    except Exception as e:  # pragma: no cover - depends on environment
         errs.append(f"sionna.phy public API import failed: {e}")
 
     try:
         import sionna  # type: ignore
         import tensorflow as tf  # type: ignore
-        from sionna.phy.mapping import BinarySource, Mapper, Demapper  # type: ignore
         from sionna.phy.channel.awgn import AWGN  # type: ignore
-        from sionna.phy.fec.ldpc.encoding import LDPC5GEncoder  # type: ignore
         from sionna.phy.fec.ldpc.decoding import LDPC5GDecoder  # type: ignore
+        from sionna.phy.fec.ldpc.encoding import LDPC5GEncoder  # type: ignore
+        from sionna.phy.mapping import BinarySource, Demapper, Mapper  # type: ignore
 
         return {
             "BinarySource": BinarySource,
@@ -64,7 +123,7 @@ def _import_sionna_blocks() -> Dict[str, Any]:
             "backend": "sionna.phy.submodule",
             "sionna_version": str(getattr(sionna, "__version__", "unknown")),
         }
-    except Exception as e:
+    except Exception as e:  # pragma: no cover - depends on environment
         errs.append(f"sionna.phy submodule import failed: {e}")
 
     raise RuntimeError("Could not import Sionna FER blocks. " + " | ".join(errs))
@@ -76,11 +135,11 @@ def _fer_fallback_awgn(sinr_db: float, modulation_order: int, code_rate: float) 
     This is not publication-grade FER. It exists only to keep light experiments
     from crashing when Sionna is unavailable.
     """
-    snr_lin = 10.0 ** (sinr_db / 10.0)
-    ebn0 = snr_lin / max(modulation_order * code_rate, 1e-9)
-    q = 0.5 * math.erfc(math.sqrt(max(ebn0, 1e-12)))
+    snr_lin = 10.0 ** (float(sinr_db) / 10.0)
+    ebn0 = snr_lin / max(int(modulation_order) * float(code_rate), 1.0e-9)
+    q = 0.5 * math.erfc(math.sqrt(max(ebn0, 1.0e-12)))
     fer = 1.0 - (1.0 - q) ** 256
-    return float(np.clip(fer, 1e-8, 1.0))
+    return float(np.clip(fer, 1.0e-8, 1.0))
 
 
 def _make_mapper(Mapper, modulation_order: int):
@@ -144,6 +203,46 @@ def _to_hard_bits(x, tf):
     return tf.cast(x > 0.5, tf.float32)
 
 
+def _fallback_curve_result(
+    *,
+    sinr_db_points: Sequence[float],
+    modulation_order: int,
+    code_rate: float,
+    k_bits: int,
+    n_bits: int,
+    num_frames_per_point: int,
+    error_message: str,
+) -> FerCurveResult:
+    rows = [
+        {
+            "sinr_db": float(s),
+            "fer": _fer_fallback_awgn(
+                float(s),
+                modulation_order=modulation_order,
+                code_rate=code_rate,
+            ),
+            "num_frames": float(num_frames_per_point),
+            "num_frame_errors": float(np.nan),
+            "used_sionna": False,
+            "backend": "fallback_awgn",
+            "sionna_version": "",
+            "sionna_error": str(error_message),
+        }
+        for s in sinr_db_points
+    ]
+    return FerCurveResult(
+        modulation_order=int(modulation_order),
+        code_rate=float(code_rate),
+        k_bits=int(k_bits),
+        n_bits=int(n_bits),
+        used_sionna=False,
+        backend="fallback_awgn",
+        sionna_version="",
+        error_message=str(error_message),
+        rows=rows,
+    )
+
+
 def simulate_5g_nr_fer_curve(
     *,
     sinr_db_points: Sequence[float],
@@ -156,8 +255,30 @@ def simulate_5g_nr_fer_curve(
     require_sionna: bool = False,
     allow_fallback: bool = True,
 ) -> FerCurveResult:
-    n_bits = int(math.ceil(k_bits / max(code_rate, 1e-6)))
-    n_bits += (-n_bits) % int(modulation_order)
+    n_bits = _aligned_n_bits(
+        k_bits=int(k_bits),
+        code_rate=float(code_rate),
+        modulation_order=int(modulation_order),
+    )
+    eff_rate = _effective_code_rate(int(k_bits), n_bits=n_bits)
+    invalid_msgs = _invalid_sionna_fer_grid_messages(
+        modulation_orders=[int(modulation_order)],
+        code_rates=[float(code_rate)],
+        k_bits=int(k_bits),
+    )
+    if invalid_msgs:
+        err = invalid_msgs[0]
+        if bool(require_sionna) or not bool(allow_fallback):
+            raise RuntimeError(err)
+        return _fallback_curve_result(
+            sinr_db_points=sinr_db_points,
+            modulation_order=int(modulation_order),
+            code_rate=float(code_rate),
+            k_bits=int(k_bits),
+            n_bits=int(n_bits),
+            num_frames_per_point=int(num_frames_per_point),
+            error_message=err,
+        )
 
     try:
         blk = _import_sionna_blocks()
@@ -170,8 +291,8 @@ def simulate_5g_nr_fer_curve(
         LDPC5GDecoder = blk["LDPC5GDecoder"]
 
         encoder = LDPC5GEncoder(
-            k_bits,
-            n_bits,
+            int(k_bits),
+            int(n_bits),
             num_bits_per_symbol=int(modulation_order),
         )
 
@@ -194,20 +315,20 @@ def simulate_5g_nr_fer_curve(
             raise RuntimeError("Could not construct LDPC5GDecoder. " + " | ".join(decoder_errs))
 
         source = BinarySource()
-        mapper = _make_mapper(Mapper, modulation_order=modulation_order)
-        demapper = _make_demapper(Demapper, modulation_order=modulation_order)
+        mapper = _make_mapper(Mapper, modulation_order=int(modulation_order))
+        demapper = _make_demapper(Demapper, modulation_order=int(modulation_order))
         awgn = AWGN()
 
         rows: List[Dict[str, Any]] = []
-        bs = int(min(max(num_frames_per_point, 16), 1024))
+        bs = int(min(max(int(num_frames_per_point), 16), 1024))
         for sinr_db in sinr_db_points:
             no = tf.constant(10.0 ** (-float(sinr_db) / 10.0), dtype=tf.float32)
             num_err = 0
             num_tot = 0
 
-            while num_tot < num_frames_per_point and num_err < max_frame_errors:
-                cur_bs = min(bs, num_frames_per_point - num_tot)
-                u = tf.cast(source([cur_bs, k_bits]), tf.float32)
+            while num_tot < int(num_frames_per_point) and num_err < int(max_frame_errors):
+                cur_bs = min(bs, int(num_frames_per_point) - num_tot)
+                u = tf.cast(source([cur_bs, int(k_bits)]), tf.float32)
                 c = encoder(u)
                 x = mapper(c)
                 y = _awgn_call(awgn, x, no)
@@ -233,6 +354,7 @@ def simulate_5g_nr_fer_curve(
                     "backend": str(blk["backend"]),
                     "sionna_version": str(blk["sionna_version"]),
                     "sionna_error": "",
+                    "effective_code_rate": float(eff_rate),
                 }
             )
 
@@ -249,36 +371,17 @@ def simulate_5g_nr_fer_curve(
         )
     except Exception as e:
         err = str(e)
-        if require_sionna or not allow_fallback:
+        if bool(require_sionna) or not bool(allow_fallback):
             raise RuntimeError(f"Sionna FER failed: {err}") from e
 
-        rows = [
-            {
-                "sinr_db": float(s),
-                "fer": _fer_fallback_awgn(
-                    float(s),
-                    modulation_order=modulation_order,
-                    code_rate=code_rate,
-                ),
-                "num_frames": float(num_frames_per_point),
-                "num_frame_errors": float(np.nan),
-                "used_sionna": False,
-                "backend": "fallback_awgn",
-                "sionna_version": "",
-                "sionna_error": err,
-            }
-            for s in sinr_db_points
-        ]
-        return FerCurveResult(
+        return _fallback_curve_result(
+            sinr_db_points=sinr_db_points,
             modulation_order=int(modulation_order),
             code_rate=float(code_rate),
             k_bits=int(k_bits),
             n_bits=int(n_bits),
-            used_sionna=False,
-            backend="fallback_awgn",
-            sionna_version="",
+            num_frames_per_point=int(num_frames_per_point),
             error_message=err,
-            rows=rows,
         )
 
 
@@ -299,7 +402,7 @@ def _rate_to_sinr(df_algo: pd.DataFrame) -> list[float] | None:
     ).to_numpy(dtype=float)
     if not np.isfinite(avg_rate).any():
         return None
-    sinr_lin = np.maximum(np.power(2.0, avg_rate) - 1.0, 1e-9)
+    sinr_lin = np.maximum(np.power(2.0, avg_rate) - 1.0, 1.0e-9)
     return list((10.0 * np.log10(sinr_lin)).astype(float))
 
 
@@ -317,7 +420,9 @@ def _infer_fer_input_sinr_db(
     requested metric directly if it exists, and only fall back when it is
     missing.
     """
-    candidates = [str(requested_col)] + [str(c) for c in fallback_cols if str(c) != str(requested_col)]
+    candidates = [str(requested_col)] + [
+        str(c) for c in fallback_cols if str(c) != str(requested_col)
+    ]
     for col in candidates:
         if col == "avg_user_rate_bps_per_hz":
             vals = _rate_to_sinr(df_algo)
@@ -348,6 +453,13 @@ def fer_from_algorithm_summary(
     require_sionna: bool = False,
     allow_fallback: bool = True,
 ) -> pd.DataFrame:
+    if bool(require_sionna) or not bool(allow_fallback):
+        validate_sionna_fer_grid(
+            modulation_orders=modulation_orders,
+            code_rates=code_rates,
+            k_bits=int(k_bits),
+        )
+
     rows: List[Dict[str, Any]] = []
     for algo, df_algo in summary_df.groupby(algorithm_col):
         sinr_points, sinr_source = _infer_fer_input_sinr_db(
@@ -378,6 +490,7 @@ def fer_from_algorithm_summary(
                             "code_rate": float(r),
                             "k_bits": int(curve.k_bits),
                             "n_bits": int(curve.n_bits),
+                            "effective_code_rate": float(_effective_code_rate(curve.k_bits, n_bits=curve.n_bits)),
                             "fer": float(row["fer"]),
                             "fer_input_sinr_db": float(row["sinr_db"]),
                             "sinr_source": str(sinr_source),

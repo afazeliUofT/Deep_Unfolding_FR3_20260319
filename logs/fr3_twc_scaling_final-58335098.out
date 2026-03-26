@@ -1,0 +1,31 @@
+2026-03-25 10:43:40.812714: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:485] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2026-03-25 10:43:40.960440: E external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:8454] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2026-03-25 10:43:41.008850: E external/local_xla/xla/stream_executor/cuda/cuda_blas.cc:1452] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2026-03-25 10:43:41.379046: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2026-03-25 10:43:43.881269: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Could not find TensorRT
+2026-03-25 10:43:48.987025: W tensorflow/core/common_runtime/gpu/gpu_bfc_allocator.cc:47] Overriding orig_value setting because the TF_FORCE_GPU_ALLOW_GROWTH environment variable is set. Original config value was 0.
+2026-03-25 10:43:48.988256: I tensorflow/core/common_runtime/gpu/gpu_device.cc:2021] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 38484 MB memory:  -> device: 0, name: NVIDIA A100-SXM4-40GB, pci bus id: 0000:c1:00.0, compute capability: 8.0
+PREFLIGHT_OK mode=scaling
+2026-03-25 10:43:50.111231: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:485] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2026-03-25 10:43:50.125108: E external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:8454] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2026-03-25 10:43:50.129624: E external/local_xla/xla/stream_executor/cuda/cuda_blas.cc:1452] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2026-03-25 10:43:50.143556: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2026-03-25 10:43:51.303974: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Could not find TensorRT
+2026-03-25 10:43:53.570799: W tensorflow/core/common_runtime/gpu/gpu_bfc_allocator.cc:47] Overriding orig_value setting because the TF_FORCE_GPU_ALLOW_GROWTH environment variable is set. Original config value was 0.
+2026-03-25 10:43:53.572063: I tensorflow/core/common_runtime/gpu/gpu_device.cc:2021] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 38484 MB memory:  -> device: 0, name: NVIDIA A100-SXM4-40GB, pci bus id: 0000:c1:00.0, compute capability: 8.0
+2026-03-25 10:43:55.856119: I tensorflow/core/util/cuda_solvers.cc:178] Creating GpuSolver handles for stream 0x5595cccb04c0
+finished scaling point M=16 K=4 -> results_twc/scaling_20260325_104353/subruns/M16_K4_20260325_104353
+finished scaling point M=16 K=6 -> results_twc/scaling_20260325_104353/subruns/M16_K6_20260325_112956
+finished scaling point M=16 K=8 -> results_twc/scaling_20260325_104353/subruns/M16_K8_20260325_121512
+finished scaling point M=32 K=4 -> results_twc/scaling_20260325_104353/subruns/M32_K4_20260325_130001
+finished scaling point M=32 K=6 -> results_twc/scaling_20260325_104353/subruns/M32_K6_20260325_134515
+finished scaling point M=32 K=8 -> results_twc/scaling_20260325_104353/subruns/M32_K8_20260325_143018
+finished scaling point M=64 K=4 -> results_twc/scaling_20260325_104353/subruns/M64_K4_20260325_151516
+finished scaling point M=64 K=6 -> results_twc/scaling_20260325_104353/subruns/M64_K6_20260325_160011
+finished scaling point M=64 K=8 -> results_twc/scaling_20260325_104353/subruns/M64_K8_20260325_164510
+finished scaling point M=96 K=4 -> results_twc/scaling_20260325_104353/subruns/M96_K4_20260325_173020
+finished scaling point M=96 K=6 -> results_twc/scaling_20260325_104353/subruns/M96_K6_20260325_181526
+finished scaling point M=96 K=8 -> results_twc/scaling_20260325_104353/subruns/M96_K8_20260325_190040
+Saved scaling suite to: results_twc/scaling_20260325_104353

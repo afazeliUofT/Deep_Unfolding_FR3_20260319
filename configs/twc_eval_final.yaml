@@ -20,7 +20,7 @@ sweep:
 twc:
   fer:
     modulation_orders: [2, 4, 6]
-    code_rates: [0.2, 0.3, 0.5, 0.7]
+    code_rates: [0.3, 0.5, 0.7]
     sinr_metric: p50_sinr_db
     fallback_sinr_cols: [avg_sinr_db, p05_sinr_db, avg_user_rate_bps_per_hz]
     k_bits: 1024
