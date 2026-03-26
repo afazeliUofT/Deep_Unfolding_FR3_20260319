@@ -223,6 +223,14 @@ def main() -> None:
             )
         fer_df = pd.read_csv(fer_csv)
         plot_fer(fer_df, out_dir / "10_fer.png")
+        if "fer_raw" in fer_df.columns:
+            fer_raw_df = fer_df.copy()
+            fer_raw_df["fer"] = fer_raw_df["fer_raw"]
+            plot_fer(
+                fer_raw_df,
+                out_dir / "10b_fer_raw_diagnostic.png",
+                title="FER before monotone projection (diagnostic)",
+            )
         informative_fer_df = _informative_fer_subset(fer_df)
         if not informative_fer_df.empty:
             label = str(informative_fer_df.attrs.get("mcs_label", "selected MCS"))

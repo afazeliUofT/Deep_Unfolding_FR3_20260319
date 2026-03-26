@@ -5,10 +5,10 @@ system_model:
 
 receiver:
   wmmse:
-    num_iterations: 48
+    num_iterations: 56
 
 experiment:
-  num_batches: 24
+  num_batches: 32
   freeze_topology: false
 
 sweep:
@@ -20,4 +20,4 @@ twc:
   selectivity:
     tau_rms_ns_values: [10.0, 20.0, 50.0, 100.0, 200.0, 400.0, 800.0]
     sweep_value_db: 5.0
-    num_batches: 24
+    num_batches: 32

@@ -6,10 +6,10 @@ system_model:
 
 receiver:
   wmmse:
-    num_iterations: 48
+    num_iterations: 56
 
 experiment:
-  num_batches: 40
+  num_batches: 64
   freeze_topology: false
 
 sweep:
@@ -24,8 +24,9 @@ twc:
     sinr_metric: p50_sinr_db
     fallback_sinr_cols: [avg_sinr_db, p05_sinr_db, avg_user_rate_bps_per_hz]
     k_bits: 1024
-    num_frames_per_point: 1024
-    max_frame_errors: 400
+    num_frames_per_point: 1536
+    max_frame_errors: 600
     decoder_iterations: 20
     require_sionna: true
     allow_fallback: false
+    enforce_monotone: true

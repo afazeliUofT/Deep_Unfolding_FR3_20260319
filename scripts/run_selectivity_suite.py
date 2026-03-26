@@ -70,11 +70,15 @@ def main() -> None:
 
     summary_rows: List[Dict[str, float | str]] = []
     gap_rows: List[Dict[str, float | str]] = []
+    repro = cfg.raw.get("reproducibility", {}) or {}
+    common_random_numbers_across_sweep = bool(repro.get("common_random_numbers_across_sweep", True))
     base_seed = int(cfg.raw["reproducibility"]["seed"]) + 100
 
     for tau in list(sel.get("tau_rms_ns_values", [20.0, 50.0, 100.0])):
         diag = summarize_flat_vs_selective(cfg=cfg, tau_rms_ns=float(tau))
         for batch_index in range(num_batches):
+            if common_random_numbers_across_sweep:
+                seed_all(base_seed + batch_index)
             topo = topo_fixed if freeze_topology else generate_hexgrid_topology(cfg, batch_size=batch_size)
             fs_loc = fs_loc_fixed if freeze_topology else (
                 generate_fixed_service_locations(cfg, topo, batch_size=batch_size) if bool(cfg.raw.get("fixed_service", {}).get("enabled", False)) else None

@@ -2,14 +2,16 @@ base_config: twc_base.yaml
 
 twc:
   unfolding:
-    num_layers: 16
+    num_layers: 20
 
   training:
-    num_steps: 3200
+    num_steps: 4000
     log_every: 50
     save_every: 0
-    learning_rate: 1.0e-3
-    lr_decay_milestones: [1400, 2400, 3000]
+    val_every: 200
+    num_val_cases: 8
+    learning_rate: 8.0e-4
+    lr_decay_milestones: [1600, 2800, 3600]
     lr_decay_factor: 0.5
     snr_db_choices: [-10.0, -5.0, 0.0, 5.0, 10.0, 15.0, 20.0, 25.0]
     random_weight_sigma: 1.0

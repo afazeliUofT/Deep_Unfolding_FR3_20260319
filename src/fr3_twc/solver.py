@@ -93,6 +93,47 @@ def _prepare_user_weights(
     return tf.reshape(tf.tile(user_weights[:, tf.newaxis, :], [1, T, 1]), [batch * T, U])
 
 
+
+def _deterministic_mf_init(
+    *,
+    H_eff: tf.Tensor,
+    xi: tf.Tensor,
+    u_per_bs: int,
+    p_tot_watt: float,
+    re_scaling: float,
+    T: int,
+    complex_dtype: tf.DType,
+    real_dtype: tf.DType,
+) -> tf.Tensor:
+    """Deterministic matched-filter warm start.
+
+    The previous repo used a fresh random beam initialization for every solve.
+    That injects unnecessary variance into evaluation curves because the solver
+    can land on slightly different stationary points even for the same channel.
+    Here we start from a channel-matched deterministic beam and only use the
+    channel itself to define the warm start.
+    """
+    H_self = _extract_self_channels(H_eff, u_per_bs=u_per_bs)  # [S_eff,B,u,Nr,M]
+    v = tf.reduce_sum(tf.math.conj(H_self), axis=3)  # [S_eff,B,u,M]
+    w0 = tf.transpose(v, [0, 1, 3, 2])  # [S_eff,B,M,u]
+
+    xi_local = tf.reshape(tf.cast(xi, real_dtype), [-1, tf.shape(w0)[1], u_per_bs])
+    xi_gain = tf.sqrt(
+        xi_local / tf.maximum(tf.reduce_mean(xi_local, axis=-1, keepdims=True), tf.cast(1.0e-12, real_dtype))
+    )
+    w0 = w0 * _to_complex_tensor(xi_gain[:, :, tf.newaxis, :], complex_dtype)
+
+    col_norm = tf.sqrt(
+        tf.reduce_sum(tf.abs(w0) ** 2, axis=2, keepdims=True) + _to_complex_tensor(1.0e-12, complex_dtype)
+    )
+    w0 = w0 / col_norm
+
+    pow_b = tf.reduce_sum(tf.abs(w0) ** 2, axis=[2, 3])
+    target = tf.cast(p_tot_watt / (re_scaling * T), real_dtype)
+    scale = tf.sqrt(target / tf.maximum(tf.cast(pow_b, real_dtype), tf.cast(1.0e-12, real_dtype)))
+    return w0 * _to_complex_tensor(scale[:, :, tf.newaxis, tf.newaxis], complex_dtype)
+
+
 def _history_weighted_sum_rate(
     mmse: MmseOutput,
     xi: tf.Tensor,
@@ -275,6 +316,7 @@ def weighted_wmmse_solve(
     rho_mu_base = float(w_cfg.get("dual_step_mu", 0.02))
     rho_lam_base = float(w_cfg.get("dual_step_lambda", 0.2))
     damping_base = float(w_cfg.get("damping_w", 1.0))
+    init_mode = str(w_cfg.get("init_mode", "matched_filter")).lower().strip()
     fs_mode = str(fs_mode).lower().strip()
 
     lam_update_mode = str(w_cfg.get("lambda_update_mode", "ratio")).lower().strip()
@@ -295,12 +337,25 @@ def weighted_wmmse_solve(
 
     if init_w is not None:
         w = _to_complex_tensor(init_w, complex_dtype)
-    else:
+    elif init_mode == "random":
         w0 = _complex_normal([S_eff, B, M, u_per_bs], dtype=complex_dtype)
         pow_b = tf.reduce_sum(tf.abs(w0) ** 2, axis=[2, 3])
         target = tf.cast(p_tot_watt / (re_scaling * T), real_dtype)
         scale = tf.sqrt(target / (tf.cast(pow_b, real_dtype) + 1e-12))
         w = w0 * _to_complex_tensor(scale[:, :, tf.newaxis, tf.newaxis], complex_dtype)
+    elif init_mode in ("matched_filter", "mf", "mrt"):
+        w = _deterministic_mf_init(
+            H_eff=H_eff,
+            xi=xi,
+            u_per_bs=u_per_bs,
+            p_tot_watt=p_tot_watt,
+            re_scaling=re_scaling,
+            T=T,
+            complex_dtype=complex_dtype,
+            real_dtype=real_dtype,
+        )
+    else:
+        raise ValueError(f"Unsupported receiver.wmmse.init_mode={init_mode!r}")
 
     mu_init = float(w_cfg.get("mu_init", 1.0))
     lam_init = float(w_cfg.get("lambda_init", 0.0))

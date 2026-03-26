@@ -94,6 +94,7 @@ def main() -> None:
         decoder_iterations=int(fer_cfg.get("decoder_iterations", 20)),
         require_sionna=require_sionna,
         allow_fallback=allow_fallback,
+        enforce_monotone=bool(fer_cfg.get("enforce_monotone", False)),
     )
     fer_path = art.paths.root / "fer.csv"
     fer_df.to_csv(fer_path, index=False)

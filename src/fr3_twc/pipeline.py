@@ -13,7 +13,7 @@ from fr3_sim.channel import FsStats, generate_fs_stats, generate_ue_channels
 from fr3_sim.config import ResolvedConfig
 from fr3_sim.topology import FixedServiceLocations, TopologyData, generate_fixed_service_locations, generate_hexgrid_topology
 
-from .common import ensure_dir, now_ts, save_csv, save_json, save_yaml
+from .common import ensure_dir, now_ts, save_csv, save_json, save_yaml, seed_all
 from .fs_masks import apply_delta_mask, compute_cognitive_mask, summarize_mask
 from .metrics_ext import extended_metrics, per_user_rates_from_mmse
 from .plotting import plot_topology
@@ -122,6 +122,19 @@ def _cognitive_cfg(cfg: ResolvedConfig) -> Mapping[str, float]:
         "temperature": float(cg.get("temperature", 1.0)),
         "protect_top_l": int(cg.get("protect_top_l", 0)),
     }
+
+
+
+def _scenario_seed(
+    *,
+    base_seed: int,
+    sweep_index: int,
+    batch_index: int,
+    common_random_numbers_across_sweep: bool,
+) -> int:
+    if bool(common_random_numbers_across_sweep):
+        return int(base_seed + batch_index)
+    return int(base_seed + 10000 * sweep_index + batch_index)
 
 
 def _prepare_fs_variant(cfg: ResolvedConfig, fs: Optional[FsStats], spec: AlgorithmSpec) -> Tuple[Optional[FsStats], Dict[str, float]]:
@@ -307,7 +320,11 @@ def run_suite(
     num_batches = int(cfg.raw.get("experiment", {}).get("num_batches", 3))
     freeze_topology = bool(cfg.raw.get("experiment", {}).get("freeze_topology", True))
     sweep_values = _sweep_values(cfg)
+    repro = cfg.raw.get("reproducibility", {}) or {}
+    base_seed = int(repro.get("seed", 0))
+    common_random_numbers_across_sweep = bool(repro.get("common_random_numbers_across_sweep", True))
 
+    seed_all(base_seed)
     topo_fixed = generate_hexgrid_topology(cfg, batch_size=batch_size)
     fs_loc_fixed = generate_fixed_service_locations(cfg, topo_fixed, batch_size=batch_size) if bool(cfg.raw.get("fixed_service", {}).get("enabled", False)) else None
     fs_fixed = generate_fs_stats(cfg, topo_fixed, fs_loc_fixed, batch_size=batch_size) if fs_loc_fixed is not None else None
@@ -318,9 +335,17 @@ def run_suite(
     summary_rows: List[Dict[str, float]] = []
     history_rows: List[Dict[str, float]] = []
 
-    for sweep_value in sweep_values:
+    for sweep_index, sweep_value in enumerate(sweep_values):
         noise_var_watt = _noise_from_snr(cfg, snr_db=float(sweep_value))
         for batch_index in range(num_batches):
+            seed_all(
+                _scenario_seed(
+                    base_seed=base_seed,
+                    sweep_index=sweep_index,
+                    batch_index=batch_index,
+                    common_random_numbers_across_sweep=common_random_numbers_across_sweep,
+                )
+            )
             topo = topo_fixed if freeze_topology else generate_hexgrid_topology(cfg, batch_size=batch_size)
             fs_loc = fs_loc_fixed if freeze_topology else (
                 generate_fixed_service_locations(cfg, topo, batch_size=batch_size) if bool(cfg.raw.get("fixed_service", {}).get("enabled", False)) else None

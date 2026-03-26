@@ -4,6 +4,7 @@ reproducibility:
   seed: 7
   deterministic_tf: true
   precision: "single"
+  common_random_numbers_across_sweep: true
 
 system_model:
   # Train on more tone groups than before to reduce the train/eval mismatch.
@@ -43,6 +44,7 @@ receiver:
   name: wmmse
   wmmse:
     num_iterations: 40
+    init_mode: matched_filter
     fs_enforcement: budget_dual
     fs_lambda_search: false
     dual_step_mu: 0.02

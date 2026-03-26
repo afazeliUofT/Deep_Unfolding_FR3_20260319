@@ -9,7 +9,6 @@ _rb.bootstrap()
 
 from fr3_twc.config import get_twc_paths, load_twc_config
 from fr3_twc.fer import validate_sionna_fer_grid
-from fr3_twc.reporting import load_models
 
 
 def parse_args() -> argparse.Namespace:
@@ -36,10 +35,8 @@ def _require_file(path: Path, description: str) -> None:
 
 def _check_checkpoints(cfg) -> None:
     twc_paths = get_twc_paths(cfg)
-    models = load_models(twc_paths.checkpoint_root, names=["soft", "cognitive"])
-    missing = [name for name in ["soft", "cognitive"] if name not in models]
-    if missing:
-        raise FileNotFoundError(f"Missing checkpoints in {twc_paths.checkpoint_root}: {missing}")
+    for name in ["soft", "cognitive"]:
+        _require_file(twc_paths.checkpoint_root / f"{name}.npz", f"{name} checkpoint")
 
 
 def _check_eval_config(cfg) -> None:
@@ -75,6 +72,7 @@ def _check_figures_inputs(root: Path, eval_dir: str | None, scaling_dir: str | N
 
 def main() -> None:
     args = parse_args()
+
     if args.mode in {"eval", "scaling", "selectivity"}:
         cfg = load_twc_config(args.config, overrides=args.overrides)
         _check_checkpoints(cfg)

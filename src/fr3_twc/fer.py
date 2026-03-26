@@ -437,6 +437,20 @@ def _infer_fer_input_sinr_db(
     raise KeyError(f"Could not infer FER SINR input from columns: {list(df_algo.columns)}")
 
 
+
+def _enforce_nonincreasing_fer(df: pd.DataFrame, *, sweep_col: str, group_cols: Sequence[str]) -> pd.DataFrame:
+    if df.empty:
+        return df.copy()
+    out_parts: list[pd.DataFrame] = []
+    for _, sub in df.groupby(list(group_cols), sort=False):
+        sub = sub.sort_values(sweep_col).copy()
+        raw = pd.to_numeric(sub["fer"], errors="coerce").to_numpy(dtype=float)
+        sub["fer_raw"] = raw
+        sub["fer"] = np.minimum.accumulate(np.clip(raw, 1.0e-8, 1.0))
+        out_parts.append(sub)
+    return pd.concat(out_parts, ignore_index=True)
+
+
 def fer_from_algorithm_summary(
     summary_df: pd.DataFrame,
     *,
@@ -452,6 +466,7 @@ def fer_from_algorithm_summary(
     decoder_iterations: int = 20,
     require_sionna: bool = False,
     allow_fallback: bool = True,
+    enforce_monotone: bool = False,
 ) -> pd.DataFrame:
     if bool(require_sionna) or not bool(allow_fallback):
         validate_sionna_fer_grid(
@@ -500,4 +515,11 @@ def fer_from_algorithm_summary(
                             "sionna_error": str(row["sionna_error"]),
                         }
                     )
-    return pd.DataFrame(rows)
+    out_df = pd.DataFrame(rows)
+    if bool(enforce_monotone) and not out_df.empty:
+        out_df = _enforce_nonincreasing_fer(
+            out_df,
+            sweep_col=sweep_col,
+            group_cols=[algorithm_col, "modulation_order", "code_rate"],
+        )
+    return out_df
