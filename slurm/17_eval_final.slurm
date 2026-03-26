@@ -17,5 +17,6 @@ source "$ROOT/venv_fr3_twc/bin/activate"
 export PYTHONPATH="$ROOT/scripts:$ROOT/src:$ROOT:${PYTHONPATH:-}"
 export FR3_REPO_ROOT="$ROOT"
 export TF_FORCE_GPU_ALLOW_GROWTH=true
+export TF_CPP_MIN_LOG_LEVEL=3
 python -u scripts/preflight_twc_final.py --mode eval --config configs/twc_eval_final.yaml
 python -u scripts/eval_unfolding.py --config configs/twc_eval_final.yaml

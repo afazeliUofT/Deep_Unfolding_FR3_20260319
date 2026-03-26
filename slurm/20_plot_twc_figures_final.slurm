@@ -16,5 +16,6 @@ source "$ROOT/venv_fr3_twc/bin/activate"
 export PYTHONPATH="$ROOT/scripts:$ROOT/src:$ROOT:${PYTHONPATH:-}"
 export FR3_REPO_ROOT="$ROOT"
 export MPLBACKEND=Agg
+export TF_CPP_MIN_LOG_LEVEL=3
 python -u scripts/preflight_twc_final.py --mode figures --output-root results_twc
 python -u scripts/plot_twc_figures.py --output-root results_twc
