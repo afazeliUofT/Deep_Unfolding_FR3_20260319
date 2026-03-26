@@ -16,3 +16,5 @@ To enable the following instructions: AVX2 FMA, in other operations, rebuild Ten
 2026-03-25 10:40:50.461417: W tensorflow/core/common_runtime/gpu/gpu_bfc_allocator.cc:47] Overriding orig_value setting because the TF_FORCE_GPU_ALLOW_GROWTH environment variable is set. Original config value was 0.
 2026-03-25 10:40:50.471465: I tensorflow/core/common_runtime/gpu/gpu_device.cc:2021] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 38484 MB memory:  -> device: 0, name: NVIDIA A100-SXM4-40GB, pci bus id: 0000:c1:00.0, compute capability: 8.0
 2026-03-25 10:40:53.922485: I tensorflow/core/util/cuda_solvers.cc:178] Creating GpuSolver handles for stream 0x55d2f7f5def0
+FER_STATUS used_sionna_all=True used_sionna_any=True
+Saved evaluation suite to: results_twc/eval_all_20260325_104050
