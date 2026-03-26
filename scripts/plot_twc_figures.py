@@ -1,26 +1,40 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
 import argparse
 import shutil
+import sys
+from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-import _repo_bootstrap as _rb
 
-_rb.bootstrap()
+def _prepend(path: Path) -> None:
+    s = str(path)
+    if path.exists() and s not in sys.path:
+        sys.path.insert(0, s)
 
-from fr3_twc.common import ensure_dir, now_ts
-from fr3_twc.plotting import (
+
+def _add_repo_paths() -> Path:
+    root = Path(__file__).resolve().parents[1]
+    for path in (root, root / "src", root / "scripts"):
+        _prepend(path)
+    return root
+
+
+ROOT = _add_repo_paths()
+
+from fr3_twc.plotting import (  # noqa: E402
     plot_convergence,
     plot_fer,
     plot_metric_vs_sweep,
     plot_scaling_heatmap,
     plot_selectivity_gap,
 )
-from fr3_twc.reporting import latest_prefixed_dir
+
 
 
 def parse_args() -> argparse.Namespace:
@@ -34,6 +48,24 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+
+def _ensure_dir(path: Path) -> Path:
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+
+def _now_ts() -> str:
+    return datetime.now().strftime("%Y%m%d_%H%M%S")
+
+
+
+def _latest_prefixed_dir(root: Path, prefix: str) -> Path | None:
+    cands = sorted([p for p in root.glob(f"{prefix}*") if p.is_dir()])
+    return cands[-1] if cands else None
+
+
+
 def _pick_csv(root: Path, preferred: str, fallback: str) -> Path | None:
     p = root / preferred
     if p.exists():
@@ -44,11 +76,13 @@ def _pick_csv(root: Path, preferred: str, fallback: str) -> Path | None:
     return None
 
 
+
 def _fairness_col(df: pd.DataFrame) -> str | None:
     for c in ["pf_jain_fairness", "jain_fairness"]:
         if c in df.columns:
             return c
     return None
+
 
 
 def _copy_geometry(src_dir: Path, out_dir: Path) -> None:
@@ -57,11 +91,11 @@ def _copy_geometry(src_dir: Path, out_dir: Path) -> None:
         shutil.copy2(cand, out_dir / "reference_geometry.png")
 
 
+
 def _pareto_plot(df: pd.DataFrame, out_path: Path) -> None:
     fairness = _fairness_col(df)
     if fairness is None or "protection_satisfaction" not in df.columns:
         return
-
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     for algo, sub in df.groupby("algorithm"):
@@ -88,11 +122,9 @@ _PF_ALGOS = [
     "du_pf_cognitive",
     "pf_fs_hybrid",
 ]
-_LEGACY_ALGOS = [
-    "ew_no_fs",
-    "ew_fs_soft",
-    "edge_fs_soft",
-]
+
+_LEGACY_ALGOS = ["ew_no_fs", "ew_fs_soft", "edge_fs_soft"]
+
 
 
 def _subset_algorithms(df: pd.DataFrame, algos: list[str]) -> pd.DataFrame:
@@ -105,10 +137,10 @@ def _subset_algorithms(df: pd.DataFrame, algos: list[str]) -> pd.DataFrame:
     return sub
 
 
+
 def _informative_fer_subset(fer_df: pd.DataFrame, target_fer: float = 1.0e-1) -> pd.DataFrame:
     if fer_df.empty:
         return fer_df
-
     rows = []
     for (mod_order, code_rate), sub in fer_df.groupby(["modulation_order", "code_rate"]):
         vals = pd.to_numeric(sub["fer"], errors="coerce").to_numpy(dtype=float)
@@ -125,10 +157,8 @@ def _informative_fer_subset(fer_df: pd.DataFrame, target_fer: float = 1.0e-1) ->
                 "score": score,
             }
         )
-
     if not rows:
         return fer_df.iloc[0:0].copy()
-
     stats = pd.DataFrame(rows).sort_values(
         ["score", "modulation_order", "code_rate"],
         ascending=[True, False, False],
@@ -142,14 +172,15 @@ def _informative_fer_subset(fer_df: pd.DataFrame, target_fer: float = 1.0e-1) ->
     return sub
 
 
+
 def main() -> None:
     args = parse_args()
     root = Path(args.output_root)
-    eval_dir = Path(args.eval_dir) if args.eval_dir else latest_prefixed_dir(root, "eval_all_")
-    baseline_dir = Path(args.baseline_dir) if args.baseline_dir else latest_prefixed_dir(root, "baselines_")
-    scaling_dir = Path(args.scaling_dir) if args.scaling_dir else latest_prefixed_dir(root, "scaling_")
-    selectivity_dir = Path(args.selectivity_dir) if args.selectivity_dir else latest_prefixed_dir(root, "selectivity_")
-    out_dir = ensure_dir(Path(args.out_dir) if args.out_dir else root / f"figures_twc_{now_ts()}")
+    eval_dir = Path(args.eval_dir) if args.eval_dir else _latest_prefixed_dir(root, "eval_all_")
+    baseline_dir = Path(args.baseline_dir) if args.baseline_dir else _latest_prefixed_dir(root, "baselines_")
+    scaling_dir = Path(args.scaling_dir) if args.scaling_dir else _latest_prefixed_dir(root, "scaling_")
+    selectivity_dir = Path(args.selectivity_dir) if args.selectivity_dir else _latest_prefixed_dir(root, "selectivity_")
+    out_dir = _ensure_dir(Path(args.out_dir) if args.out_dir else root / f"figures_twc_{_now_ts()}")
 
     source_for_geometry = eval_dir or baseline_dir
     if source_for_geometry is not None:
@@ -206,7 +237,6 @@ def main() -> None:
             if "runtime_sec" in df.columns:
                 plot_metric_vs_sweep(df, "runtime_sec", out_dir / "06_runtime_vs_snr.png")
             _pareto_plot(df, out_dir / "07_fairness_vs_protection.png")
-
         if hist_csv is not None:
             h = pd.read_csv(hist_csv)
             if "w_delta" in h.columns:
@@ -218,9 +248,7 @@ def main() -> None:
 
         fer_csv = eval_dir / "fer.csv"
         if not fer_csv.exists():
-            raise FileNotFoundError(
-                f"Missing FER file: {fer_csv}. Refusing to generate final figures without FER."
-            )
+            raise FileNotFoundError(f"Missing FER file: {fer_csv}. Refusing to generate final figures without FER.")
         fer_df = pd.read_csv(fer_csv)
         plot_fer(fer_df, out_dir / "10_fer.png")
         if "fer_raw" in fer_df.columns:

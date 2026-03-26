@@ -8,7 +8,9 @@
 #SBATCH --output=logs/%x-%j.out
 
 set -euo pipefail
+
 ROOT=/home/rsadve1/Deep_Unfolding_FR3_20260319
+QUIET_PY="$ROOT/scripts/run_quiet_python.py"
 cd "$ROOT"
 mkdir -p logs
 module purge >/dev/null 2>&1 || true
@@ -18,5 +20,6 @@ export PYTHONPATH="$ROOT/scripts:$ROOT/src:$ROOT:${PYTHONPATH:-}"
 export FR3_REPO_ROOT="$ROOT"
 export TF_FORCE_GPU_ALLOW_GROWTH=true
 export TF_CPP_MIN_LOG_LEVEL=3
-python -u scripts/preflight_twc_final.py --mode scaling --config configs/twc_scaling_final.yaml
-python -u scripts/run_scaling_suite.py --config configs/twc_scaling_final.yaml
+
+python -u "$QUIET_PY" scripts/preflight_twc_final.py --mode scaling --config configs/twc_scaling_final.yaml
+python -u "$QUIET_PY" scripts/run_scaling_suite.py --config configs/twc_scaling_final.yaml

@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import tensorflow as tf
 
-from fr3_sim.topology import FixedServiceLocations, TopologyData
+if TYPE_CHECKING:  # pragma: no cover
+    from fr3_sim.topology import FixedServiceLocations, TopologyData
 
 
 def _prep_out(path: str | Path) -> Path:
@@ -17,23 +17,31 @@ def _prep_out(path: str | Path) -> Path:
     return p
 
 
+
+def _to_numpy(x: Any) -> np.ndarray:
+    if hasattr(x, "numpy"):
+        return np.asarray(x.numpy())
+    return np.asarray(x)
+
+
+
 def plot_topology(
-    topo: TopologyData,
-    fs_loc: Optional[FixedServiceLocations],
+    topo: "TopologyData",
+    fs_loc: Optional["FixedServiceLocations"],
     out_path: str | Path,
     title: str = "Reference geometry",
     dpi: int = 220,
 ) -> Path:
     p = _prep_out(out_path)
-    bs = tf.cast(topo.bs_loc[0], tf.float32).numpy()
-    ut = tf.cast(topo.ut_loc[0], tf.float32).numpy()
+    bs = _to_numpy(topo.bs_loc[0]).astype(np.float32, copy=False)
+    ut = _to_numpy(topo.ut_loc[0]).astype(np.float32, copy=False)
 
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     ax.scatter(bs[:, 0], bs[:, 1], marker="^", label="BS")
     ax.scatter(ut[:, 0], ut[:, 1], s=8, alpha=0.6, label="UE")
     if fs_loc is not None:
-        fs = tf.cast(fs_loc.fs_loc[0], tf.float32).numpy()
+        fs = _to_numpy(fs_loc.fs_loc[0]).astype(np.float32, copy=False)
         ax.scatter(fs[:, 0], fs[:, 1], marker="x", s=50, label="FS RX")
     ax.set_title(title)
     ax.set_xlabel("x [m]")
@@ -43,6 +51,7 @@ def plot_topology(
     fig.savefig(p, dpi=dpi, bbox_inches="tight")
     plt.close(fig)
     return p
+
 
 
 def plot_metric_vs_sweep(
@@ -71,6 +80,7 @@ def plot_metric_vs_sweep(
     return p
 
 
+
 def plot_convergence(
     history_df: pd.DataFrame,
     metric: str,
@@ -85,7 +95,8 @@ def plot_convergence(
     df = history_df.copy()
     if select_sweep is None and sweep_col in df.columns:
         uniq = sorted(df[sweep_col].unique())
-        select_sweep = uniq[len(uniq) // 2]
+        if uniq:
+            select_sweep = uniq[len(uniq) // 2]
     if sweep_col in df.columns and select_sweep is not None:
         df = df[df[sweep_col] == select_sweep]
 
@@ -102,6 +113,7 @@ def plot_convergence(
     fig.savefig(p, dpi=dpi, bbox_inches="tight")
     plt.close(fig)
     return p
+
 
 
 def plot_fer(
@@ -133,6 +145,7 @@ def plot_fer(
     return p
 
 
+
 def plot_scaling_heatmap(
     df: pd.DataFrame,
     metric: str,
@@ -157,6 +170,7 @@ def plot_scaling_heatmap(
     fig.savefig(p, dpi=dpi, bbox_inches="tight")
     plt.close(fig)
     return p
+
 
 
 def plot_selectivity_gap(

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Iterable, Mapping, Optional, Sequence
+from typing import TYPE_CHECKING, Dict, Optional, Sequence
 
 import pandas as pd
 
-from .common import ensure_dir, save_csv
-from .unfolding import UnfoldedWeightedWMMSE
+from .common import save_csv
+
+if TYPE_CHECKING:  # pragma: no cover
+    from .unfolding import UnfoldedWeightedWMMSE
+
 
 
 def aggregate_mean(df: pd.DataFrame, group_cols: Sequence[str]) -> pd.DataFrame:
@@ -17,6 +20,7 @@ def aggregate_mean(df: pd.DataFrame, group_cols: Sequence[str]) -> pd.DataFrame:
     return out
 
 
+
 def latest_prefixed_dir(root: str | Path, prefix: str) -> Optional[Path]:
     root = Path(root)
     cands = [p for p in root.glob(f"{prefix}*") if p.is_dir()]
@@ -25,7 +29,11 @@ def latest_prefixed_dir(root: str | Path, prefix: str) -> Optional[Path]:
     return sorted(cands)[-1]
 
 
-def load_models(model_dir: str | Path, names: Sequence[str]) -> Dict[str, UnfoldedWeightedWMMSE]:
+
+def load_models(model_dir: str | Path, names: Sequence[str]) -> Dict[str, "UnfoldedWeightedWMMSE"]:
+    # Lazy import so non-training/reporting utilities do not import TensorFlow unnecessarily.
+    from .unfolding import UnfoldedWeightedWMMSE
+
     out: Dict[str, UnfoldedWeightedWMMSE] = {}
     model_dir = Path(model_dir)
     for name in names:
@@ -35,7 +43,8 @@ def load_models(model_dir: str | Path, names: Sequence[str]) -> Dict[str, Unfold
     return out
 
 
+
 def save_grouped_mean(df: pd.DataFrame, out_path: str | Path, group_cols: Sequence[str]) -> pd.DataFrame:
     agg = aggregate_mean(df, group_cols=group_cols)
-    agg.to_csv(Path(out_path), index=False)
+    save_csv(Path(out_path), agg)
     return agg

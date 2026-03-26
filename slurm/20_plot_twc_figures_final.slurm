@@ -7,7 +7,9 @@
 #SBATCH --output=logs/%x-%j.out
 
 set -euo pipefail
+
 ROOT=/home/rsadve1/Deep_Unfolding_FR3_20260319
+QUIET_PY="$ROOT/scripts/run_quiet_python.py"
 cd "$ROOT"
 mkdir -p logs
 module purge >/dev/null 2>&1 || true
@@ -17,5 +19,6 @@ export PYTHONPATH="$ROOT/scripts:$ROOT/src:$ROOT:${PYTHONPATH:-}"
 export FR3_REPO_ROOT="$ROOT"
 export MPLBACKEND=Agg
 export TF_CPP_MIN_LOG_LEVEL=3
-python -u scripts/preflight_twc_final.py --mode figures --output-root results_twc
-python -u scripts/plot_twc_figures.py --output-root results_twc
+
+python -u "$QUIET_PY" scripts/preflight_twc_final.py --mode figures --output-root results_twc
+python -u "$QUIET_PY" scripts/plot_twc_figures.py --output-root results_twc

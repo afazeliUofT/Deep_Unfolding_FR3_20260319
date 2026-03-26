@@ -1,14 +1,16 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
 import argparse
+import copy
+import math
 from pathlib import Path
+from typing import Any
 
-import _repo_bootstrap as _rb
+import yaml
 
-_rb.bootstrap()
-
-from fr3_twc.config import get_twc_paths, load_twc_config
-from fr3_twc.fer import validate_sionna_fer_grid
+_MIN_SIONNA_EFFECTIVE_CODE_RATE = 1.0 / 5.0
+_SIONNA_RATE_TOL = 1.0e-12
 
 
 def parse_args() -> argparse.Namespace:
@@ -23,6 +25,66 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+def _deep_merge(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
+    out = copy.deepcopy(base)
+    for key, val in update.items():
+        if isinstance(val, dict) and isinstance(out.get(key), dict):
+            out[key] = _deep_merge(out[key], val)
+        else:
+            out[key] = copy.deepcopy(val)
+    return out
+
+
+def _load_yaml(path: Path) -> dict[str, Any]:
+    with path.open("r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    if not isinstance(data, dict):
+        raise ValueError(f"Config file {path} did not parse to a dict")
+    return data
+
+
+def _load_config(path: str | Path) -> dict[str, Any]:
+    p = Path(path)
+    cfg = _load_yaml(p)
+    base_cfg = cfg.pop("base_config", None)
+    if base_cfg is None:
+        return cfg
+    base_path = Path(str(base_cfg))
+    if not base_path.is_absolute():
+        base_path = (p.parent / base_path).resolve()
+    merged = _deep_merge(_load_config(base_path), cfg)
+    return merged
+
+
+def _parse_override(override: str) -> tuple[list[str], Any]:
+    if "=" not in str(override):
+        raise ValueError(f"Override must be KEY=VALUE, got: {override}")
+    lhs, rhs = str(override).split("=", 1)
+    keys = [k.strip() for k in lhs.split(".") if k.strip()]
+    if not keys:
+        raise ValueError(f"Invalid override key path: {override}")
+    return keys, yaml.safe_load(rhs)
+
+
+def _deep_set(d: dict[str, Any], keys: list[str], value: Any) -> None:
+    cur: dict[str, Any] = d
+    for key in keys[:-1]:
+        nxt = cur.get(key)
+        if not isinstance(nxt, dict):
+            nxt = {}
+            cur[key] = nxt
+        cur = nxt
+    cur[keys[-1]] = value
+
+
+def _apply_overrides(cfg: dict[str, Any], overrides: list[str] | None) -> dict[str, Any]:
+    out = copy.deepcopy(cfg)
+    for item in overrides or []:
+        keys, value = _parse_override(item)
+        _deep_set(out, keys, value)
+    return out
+
+
 def _latest_prefixed_dir(root: Path, prefix: str) -> Path | None:
     dirs = sorted([p for p in root.glob(f"{prefix}*") if p.is_dir()])
     return dirs[-1] if dirs else None
@@ -33,22 +95,65 @@ def _require_file(path: Path, description: str) -> None:
         raise FileNotFoundError(f"Missing {description}: {path}")
 
 
-def _check_checkpoints(cfg) -> None:
-    twc_paths = get_twc_paths(cfg)
+def _checkpoint_root(cfg: dict[str, Any]) -> Path:
+    twc = cfg.get("twc", {}) or {}
+    output_root = Path(str(twc.get("output_root", "results_twc")))
+    return Path(str(twc.get("checkpoint_root", output_root / "checkpoints")))
+
+
+def _aligned_n_bits(k_bits: int, code_rate: float, modulation_order: int) -> int:
+    n_bits = int(math.ceil(int(k_bits) / max(float(code_rate), 1.0e-6)))
+    n_bits += (-n_bits) % int(modulation_order)
+    return int(n_bits)
+
+
+def _effective_code_rate(k_bits: int, *, n_bits: int) -> float:
+    return float(int(k_bits) / max(int(n_bits), 1))
+
+
+def _validate_sionna_fer_grid(*, modulation_orders: list[int], code_rates: list[float], k_bits: int) -> None:
+    msgs: list[str] = []
+    for m in modulation_orders:
+        m_int = int(m)
+        if m_int <= 0:
+            msgs.append(f"invalid modulation order {m!r}")
+            continue
+        for r in code_rates:
+            r_float = float(r)
+            if not math.isfinite(r_float) or r_float <= 0.0:
+                msgs.append(f"invalid code rate {r!r}")
+                continue
+            n_bits = _aligned_n_bits(k_bits=int(k_bits), code_rate=r_float, modulation_order=m_int)
+            eff_rate = _effective_code_rate(int(k_bits), n_bits=n_bits)
+            if eff_rate + _SIONNA_RATE_TOL < _MIN_SIONNA_EFFECTIVE_CODE_RATE:
+                msgs.append(
+                    "unsupported Sionna FER grid entry: "
+                    f"modulation_order={m_int}, requested_code_rate={r_float:.6f}, "
+                    f"k_bits={int(k_bits)}, aligned_n_bits={n_bits}, "
+                    f"effective_code_rate={eff_rate:.6f} < 0.200000"
+                )
+    if msgs:
+        raise ValueError("Invalid FER grid for strict Sionna evaluation: " + " | ".join(msgs))
+
+
+
+def _check_checkpoints(cfg: dict[str, Any]) -> None:
+    ckpt_root = _checkpoint_root(cfg)
     for name in ["soft", "cognitive"]:
-        _require_file(twc_paths.checkpoint_root / f"{name}.npz", f"{name} checkpoint")
+        _require_file(ckpt_root / f"{name}.npz", f"{name} checkpoint")
 
 
-def _check_eval_config(cfg) -> None:
-    fer_cfg = cfg.raw.get("twc", {}).get("fer", {}) or {}
+def _check_eval_config(cfg: dict[str, Any]) -> None:
+    fer_cfg = cfg.get("twc", {}).get("fer", {}) or {}
     require_sionna = bool(fer_cfg.get("require_sionna", False))
     allow_fallback = bool(fer_cfg.get("allow_fallback", not require_sionna))
     if require_sionna or not allow_fallback:
-        validate_sionna_fer_grid(
-            modulation_orders=list(fer_cfg.get("modulation_orders", [2, 4])),
-            code_rates=list(fer_cfg.get("code_rates", [0.3, 0.5])),
+        _validate_sionna_fer_grid(
+            modulation_orders=[int(x) for x in list(fer_cfg.get("modulation_orders", [2, 4]))],
+            code_rates=[float(x) for x in list(fer_cfg.get("code_rates", [0.3, 0.5]))],
             k_bits=int(fer_cfg.get("k_bits", 1024)),
         )
+
 
 
 def _check_figures_inputs(root: Path, eval_dir: str | None, scaling_dir: str | None, selectivity_dir: str | None) -> None:
@@ -70,11 +175,12 @@ def _check_figures_inputs(root: Path, eval_dir: str | None, scaling_dir: str | N
     _require_file(selectivity_path / "gap_mean.csv", "selectivity gap_mean.csv")
 
 
+
 def main() -> None:
     args = parse_args()
 
     if args.mode in {"eval", "scaling", "selectivity"}:
-        cfg = load_twc_config(args.config, overrides=args.overrides)
+        cfg = _apply_overrides(_load_config(args.config), args.overrides)
         _check_checkpoints(cfg)
         if args.mode == "eval":
             _check_eval_config(cfg)
