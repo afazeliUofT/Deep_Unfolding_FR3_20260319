@@ -1,0 +1,17 @@
+TRAIN_JOB variant=cognitive root=/home/rsadve1/Deep_Unfolding_FR3_20260319 venv=venv_fr3_twc config=/home/rsadve1/Deep_Unfolding_FR3_20260319/configs/twc_train_final.yaml
+Traceback (most recent call last):
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/scripts/train_unfolding.py", line 329, in <module>
+    main()
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/scripts/train_unfolding.py", line 246, in main
+    result = model(
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/src/fr3_twc/unfolding.py", line 102, in __call__
+    return weighted_wmmse_solve(
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/src/fr3_twc/solver.py", line 347, in weighted_wmmse_solve
+    w = _deterministic_mf_init(
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/src/fr3_twc/solver.py", line 127, in _deterministic_mf_init
+    tf.reduce_sum(tf.abs(w0) ** 2, axis=2, keepdims=True) + _to_complex_tensor(1.0e-12, complex_dtype)
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/venv_fr3_twc/lib/python3.10/site-packages/tensorflow/python/util/traceback_utils.py", line 153, in error_handler
+    raise e.with_traceback(filtered_tb) from None
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/venv_fr3_twc/lib/python3.10/site-packages/tensorflow/python/framework/ops.py", line 5983, in raise_from_not_ok_status
+    raise core._status_to_exception(e) from None  # pylint: disable=protected-access
+tensorflow.python.framework.errors_impl.InvalidArgumentError: cannot compute AddV2 as input #1(zero-based) was expected to be a float tensor but is a complex64 tensor [Op:AddV2] name: 

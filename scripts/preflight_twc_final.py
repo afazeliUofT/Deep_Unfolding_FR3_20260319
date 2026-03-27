@@ -163,6 +163,11 @@ def _validate_sionna_fer_grid(*, modulation_orders: list[int], code_rates: list[
 
 
 
+def _train_dir_exists(output_root: Path, variant: str) -> bool:
+    return any(output_root.glob(f"train_{variant}_*"))
+
+
+
 def _check_checkpoints(cfg: dict[str, Any]) -> None:
     output_root, ckpt_root = checkpoint_roots_from_cfg(cfg, repo_root=REPO_ROOT)
     repairs = ensure_checkpoint_files(
@@ -177,8 +182,23 @@ def _check_checkpoints(cfg: dict[str, Any]) -> None:
             f"CHECKPOINT_RESTORED name={repair.name} source={repair.source} "
             f"destination={repair.destination}"
         )
+    missing: list[str] = []
     for name in ["soft", "cognitive"]:
-        _require_file(ckpt_root / f"{name}.npz", f"{name} checkpoint")
+        path = ckpt_root / f"{name}.npz"
+        if not path.exists() or not path.is_file():
+            missing.append(name)
+    if missing:
+        have_soft_train = _train_dir_exists(output_root, "soft")
+        have_cognitive_train = _train_dir_exists(output_root, "cognitive")
+        raise FileNotFoundError(
+            "Missing canonical unfolded checkpoints after recovery attempt. "
+            f"checkpoint_root={ckpt_root}. missing={','.join(missing)}. "
+            f"train_soft_dirs_found={int(have_soft_train)} train_cognitive_dirs_found={int(have_cognitive_train)}. "
+            "Run a full from-scratch pipeline submission using "
+            "bash scripts/submit_twc_publication_from_scratch.sh, "
+            "or rerun slurm/15_train_unfolding_soft_final.slurm and "
+            "slurm/16_train_unfolding_cognitive_final.slurm first."
+        )
 
 
 

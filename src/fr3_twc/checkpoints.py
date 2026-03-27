@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Mapping, Sequence
 
 import shutil
 import subprocess
@@ -84,14 +84,21 @@ def _copy_if_valid(source: Path, dest: Path) -> bool:
     return is_valid_unfolding_checkpoint(dest)
 
 
+def _safe_run(cmd: list[str]) -> subprocess.CompletedProcess[bytes] | None:
+    try:
+        return subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+    except FileNotFoundError:
+        return None
+
+
 def _git_show_to_path(repo_root: Path, repo_relpath: str, dest: Path) -> bool:
-    proc = subprocess.run(
-        ["git", "-C", str(repo_root), "show", f"HEAD:{repo_relpath}"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
-    if proc.returncode != 0 or not proc.stdout:
+    proc = _safe_run(["git", "-C", str(repo_root), "show", f"HEAD:{repo_relpath}"])
+    if proc is None or proc.returncode != 0 or not proc.stdout:
         return False
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(dest.suffix + ".tmp")
@@ -100,6 +107,33 @@ def _git_show_to_path(repo_root: Path, repo_relpath: str, dest: Path) -> bool:
         tmp.replace(dest)
         return True
     tmp.unlink(missing_ok=True)
+    return False
+
+
+def _git_checkout_to_path(repo_root: Path, repo_relpath: str, dest: Path) -> bool:
+    """
+    Restore a tracked file straight into the working tree.
+
+    This is more robust than piping binary bytes through `git show` when the local
+    repository already has the object and only the working-tree file is missing.
+    """
+    tracked_path = repo_root / repo_relpath
+    tracked_path.parent.mkdir(parents=True, exist_ok=True)
+
+    commands = [
+        ["git", "-C", str(repo_root), "restore", "--source=HEAD", "--worktree", "--", repo_relpath],
+        ["git", "-C", str(repo_root), "checkout", "HEAD", "--", repo_relpath],
+        ["git", "-C", str(repo_root), "checkout", "--", repo_relpath],
+    ]
+    for cmd in commands:
+        proc = _safe_run(cmd)
+        if proc is None or proc.returncode != 0:
+            continue
+        if is_valid_unfolding_checkpoint(tracked_path):
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            if tracked_path.resolve() != dest.resolve():
+                shutil.copy2(tracked_path, dest)
+            return is_valid_unfolding_checkpoint(dest)
     return False
 
 
@@ -151,6 +185,12 @@ def ensure_checkpoint_files(
                 break
 
         if recovered:
+            if verbose:
+                last = repairs[-1]
+                print(
+                    f"CHECKPOINT_RESTORED name={last.name} source={last.source} "
+                    f"destination={last.destination}"
+                )
             continue
 
         git_candidates: list[str] = []
@@ -165,6 +205,16 @@ def ensure_checkpoint_files(
                     CheckpointRepair(
                         name=str(name),
                         source=f"git:HEAD:{rel}",
+                        destination=dest,
+                    )
+                )
+                recovered = True
+                break
+            if _git_checkout_to_path(repo_root_p, rel, dest):
+                repairs.append(
+                    CheckpointRepair(
+                        name=str(name),
+                        source=f"git-worktree:HEAD:{rel}",
                         destination=dest,
                     )
                 )
