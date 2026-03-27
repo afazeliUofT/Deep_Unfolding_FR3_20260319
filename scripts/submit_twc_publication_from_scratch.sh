@@ -32,4 +32,5 @@ SUBMITTED_FROM_SCRATCH
   figures_job=${jid_figures}
 
 This submission order prevents eval/scaling/selectivity from starting before checkpoints exist.
+Use bash scripts/submit_twc_publication.sh in normal operation; it will restore checkpoints if possible and otherwise fall back to this full from-scratch chain automatically.
 EOF

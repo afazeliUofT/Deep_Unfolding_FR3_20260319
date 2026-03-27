@@ -17,7 +17,6 @@ def _prepend(path: Path) -> None:
         sys.path.insert(0, s)
 
 
-
 def _add_repo_paths() -> Path:
     root = Path(__file__).resolve().parents[1]
     for path in (root, root / "src", root / "scripts"):
@@ -27,11 +26,14 @@ def _add_repo_paths() -> Path:
 
 REPO_ROOT = _add_repo_paths()
 
-from fr3_twc.checkpoints import checkpoint_roots_from_cfg, ensure_checkpoint_files  # noqa: E402
+from fr3_twc.checkpoints import (  # noqa: E402
+    checkpoint_recovery_report,
+    checkpoint_roots_from_cfg,
+    ensure_checkpoint_files,
+)
 
 _MIN_SIONNA_EFFECTIVE_CODE_RATE = 1.0 / 5.0
 _SIONNA_RATE_TOL = 1.0e-12
-
 
 
 def parse_args() -> argparse.Namespace:
@@ -46,7 +48,6 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-
 def _deep_merge(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
     out = copy.deepcopy(base)
     for key, val in update.items():
@@ -57,14 +58,12 @@ def _deep_merge(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-
 def _load_yaml(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
     if not isinstance(data, dict):
         raise ValueError(f"Config file {path} did not parse to a dict")
     return data
-
 
 
 def _load_config(path: str | Path) -> dict[str, Any]:
@@ -80,7 +79,6 @@ def _load_config(path: str | Path) -> dict[str, Any]:
     return merged
 
 
-
 def _parse_override(override: str) -> tuple[list[str], Any]:
     if "=" not in str(override):
         raise ValueError(f"Override must be KEY=VALUE, got: {override}")
@@ -89,7 +87,6 @@ def _parse_override(override: str) -> tuple[list[str], Any]:
     if not keys:
         raise ValueError(f"Invalid override key path: {override}")
     return keys, yaml.safe_load(rhs)
-
 
 
 def _deep_set(d: dict[str, Any], keys: list[str], value: Any) -> None:
@@ -103,7 +100,6 @@ def _deep_set(d: dict[str, Any], keys: list[str], value: Any) -> None:
     cur[keys[-1]] = value
 
 
-
 def _apply_overrides(cfg: dict[str, Any], overrides: list[str] | None) -> dict[str, Any]:
     out = copy.deepcopy(cfg)
     for item in overrides or []:
@@ -112,17 +108,14 @@ def _apply_overrides(cfg: dict[str, Any], overrides: list[str] | None) -> dict[s
     return out
 
 
-
 def _latest_prefixed_dir(root: Path, prefix: str) -> Path | None:
     dirs = sorted([p for p in root.glob(f"{prefix}*") if p.is_dir()])
     return dirs[-1] if dirs else None
 
 
-
 def _require_file(path: Path, description: str) -> None:
     if not path.exists():
         raise FileNotFoundError(f"Missing {description}: {path}")
-
 
 
 def _aligned_n_bits(k_bits: int, code_rate: float, modulation_order: int) -> int:
@@ -131,10 +124,8 @@ def _aligned_n_bits(k_bits: int, code_rate: float, modulation_order: int) -> int
     return int(n_bits)
 
 
-
 def _effective_code_rate(k_bits: int, *, n_bits: int) -> float:
     return float(int(k_bits) / max(int(n_bits), 1))
-
 
 
 def _validate_sionna_fer_grid(*, modulation_orders: list[int], code_rates: list[float], k_bits: int) -> None:
@@ -162,26 +153,46 @@ def _validate_sionna_fer_grid(*, modulation_orders: list[int], code_rates: list[
         raise ValueError("Invalid FER grid for strict Sionna evaluation: " + " | ".join(msgs))
 
 
+def _print_checkpoint_report(stage: str, cfg: dict[str, Any]) -> None:
+    output_root, ckpt_root = checkpoint_roots_from_cfg(cfg, repo_root=REPO_ROOT)
+    reports = checkpoint_recovery_report(
+        checkpoint_root=ckpt_root,
+        names=["soft", "cognitive"],
+        output_root=output_root,
+        repo_root=REPO_ROOT,
+    )
+    for rep in reports:
+        git_present = ",".join(rep.git_head_candidates_present) if rep.git_head_candidates_present else "-"
+        git_candidates = ",".join(rep.git_candidates) if rep.git_candidates else "-"
+        print(
+            f"CHECKPOINT_STATUS stage={stage} name={rep.name} "
+            f"dest={rep.destination} dest_exists={int(rep.destination_exists)} dest_valid={int(rep.destination_valid)} "
+            f"valid_train_candidates={len(rep.valid_train_candidates)} "
+            f"git_available={int(rep.git_available)} git_repo_ok={int(rep.git_repo_ok)} "
+            f"git_head_present={git_present} git_candidates={git_candidates}"
+        )
+
 
 def _train_dir_exists(output_root: Path, variant: str) -> bool:
     return any(output_root.glob(f"train_{variant}_*"))
 
 
-
 def _check_checkpoints(cfg: dict[str, Any]) -> None:
     output_root, ckpt_root = checkpoint_roots_from_cfg(cfg, repo_root=REPO_ROOT)
+    _print_checkpoint_report("before_repair", cfg)
     repairs = ensure_checkpoint_files(
         checkpoint_root=ckpt_root,
         names=["soft", "cognitive"],
         output_root=output_root,
         repo_root=REPO_ROOT,
-        verbose=False,
+        verbose=True,
     )
     for repair in repairs:
         print(
             f"CHECKPOINT_RESTORED name={repair.name} source={repair.source} "
             f"destination={repair.destination}"
         )
+    _print_checkpoint_report("after_repair", cfg)
     missing: list[str] = []
     for name in ["soft", "cognitive"]:
         path = ckpt_root / f"{name}.npz"
@@ -194,12 +205,9 @@ def _check_checkpoints(cfg: dict[str, Any]) -> None:
             "Missing canonical unfolded checkpoints after recovery attempt. "
             f"checkpoint_root={ckpt_root}. missing={','.join(missing)}. "
             f"train_soft_dirs_found={int(have_soft_train)} train_cognitive_dirs_found={int(have_cognitive_train)}. "
-            "Run a full from-scratch pipeline submission using "
-            "bash scripts/submit_twc_publication_from_scratch.sh, "
-            "or rerun slurm/15_train_unfolding_soft_final.slurm and "
-            "slurm/16_train_unfolding_cognitive_final.slurm first."
+            "Use the orchestrator script instead of manual downstream slurms: "
+            "bash scripts/submit_twc_publication.sh"
         )
-
 
 
 def _check_eval_config(cfg: dict[str, Any]) -> None:
@@ -214,19 +222,16 @@ def _check_eval_config(cfg: dict[str, Any]) -> None:
         )
 
 
-
 def _check_figures_inputs(root: Path, eval_dir: str | None, scaling_dir: str | None, selectivity_dir: str | None) -> None:
     eval_path = Path(eval_dir) if eval_dir else _latest_prefixed_dir(root, "eval_all_")
     scaling_path = Path(scaling_dir) if scaling_dir else _latest_prefixed_dir(root, "scaling_")
     selectivity_path = Path(selectivity_dir) if selectivity_dir else _latest_prefixed_dir(root, "selectivity_")
-
     if eval_path is None:
         raise FileNotFoundError(f"No eval_all_* directory found under {root}")
     if scaling_path is None:
         raise FileNotFoundError(f"No scaling_* directory found under {root}")
     if selectivity_path is None:
         raise FileNotFoundError(f"No selectivity_* directory found under {root}")
-
     _require_file(eval_path / "summary_mean.csv", "eval summary_mean.csv")
     _require_file(eval_path / "history_mean.csv", "eval history_mean.csv")
     _require_file(eval_path / "fer.csv", "eval fer.csv")
@@ -234,10 +239,8 @@ def _check_figures_inputs(root: Path, eval_dir: str | None, scaling_dir: str | N
     _require_file(selectivity_path / "gap_mean.csv", "selectivity gap_mean.csv")
 
 
-
 def main() -> None:
     args = parse_args()
-
     if args.mode in {"eval", "scaling", "selectivity"}:
         cfg = _apply_overrides(_load_config(args.config), args.overrides)
         _check_checkpoints(cfg)

@@ -7,7 +7,6 @@ PRESERVE_CHECKPOINTS=1
 for arg in "$@"; do
   case "$arg" in
     --all)
-      # Backward-compatible alias: keep canonical checkpoints unless purge is requested.
       PRESERVE_CHECKPOINTS=1
       ;;
     --purge-checkpoints|--from-scratch)
@@ -24,6 +23,7 @@ done
 mkdir -p "$ROOT/results_twc" "$ROOT/logs"
 mkdir -p "$ROOT/results_twc/checkpoints"
 find "$ROOT/results_twc" -mindepth 1 -maxdepth 1 ! -name checkpoints -exec rm -rf {} + 2>/dev/null || true
+rm -f "$ROOT"/results_twc/checkpoints/*.tmp "$ROOT"/results_twc/checkpoints/*.npz.tmp 2>/dev/null || true
 
 if [[ "$PRESERVE_CHECKPOINTS" == "0" ]]; then
   rm -rf "$ROOT/results_twc/checkpoints"

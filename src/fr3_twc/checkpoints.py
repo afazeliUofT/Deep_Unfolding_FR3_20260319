@@ -24,6 +24,19 @@ class CheckpointRepair:
     destination: Path
 
 
+@dataclass(frozen=True)
+class CheckpointSourceReport:
+    name: str
+    destination: Path
+    destination_exists: bool
+    destination_valid: bool
+    valid_train_candidates: tuple[Path, ...]
+    git_candidates: tuple[str, ...]
+    git_head_candidates_present: tuple[str, ...]
+    git_available: bool
+    git_repo_ok: bool
+
+
 def _resolve_repo_root(repo_root: str | Path | None = None) -> Path:
     if repo_root is not None:
         return Path(repo_root).resolve()
@@ -96,6 +109,23 @@ def _safe_run(cmd: list[str]) -> subprocess.CompletedProcess[bytes] | None:
         return None
 
 
+def _git_available(repo_root: Path) -> bool:
+    proc = _safe_run(["git", "-C", str(repo_root), "--version"])
+    return proc is not None and proc.returncode == 0
+
+
+def _git_repo_ok(repo_root: Path) -> bool:
+    proc = _safe_run(["git", "-C", str(repo_root), "rev-parse", "--is-inside-work-tree"])
+    if proc is None or proc.returncode != 0:
+        return False
+    return proc.stdout.decode(errors="ignore").strip().lower() == "true"
+
+
+def _git_head_has_path(repo_root: Path, repo_relpath: str) -> bool:
+    proc = _safe_run(["git", "-C", str(repo_root), "cat-file", "-e", f"HEAD:{repo_relpath}"])
+    return proc is not None and proc.returncode == 0
+
+
 def _git_show_to_path(repo_root: Path, repo_relpath: str, dest: Path) -> bool:
     proc = _safe_run(["git", "-C", str(repo_root), "show", f"HEAD:{repo_relpath}"])
     if proc is None or proc.returncode != 0 or not proc.stdout:
@@ -143,6 +173,51 @@ def _repo_relpath(path: Path, repo_root: Path) -> str | None:
     except Exception:
         return None
     return rel.as_posix()
+
+
+def checkpoint_recovery_report(
+    *,
+    checkpoint_root: str | Path,
+    names: Sequence[str],
+    output_root: str | Path = "results_twc",
+    repo_root: str | Path | None = None,
+) -> list[CheckpointSourceReport]:
+    repo_root_p = _resolve_repo_root(repo_root)
+    output_root_p = _resolve_path(output_root, repo_root=repo_root_p)
+    checkpoint_root_p = _resolve_path(checkpoint_root, repo_root=repo_root_p)
+    legacy_root = output_root_p / "checkpoints"
+
+    git_available = _git_available(repo_root_p)
+    git_repo_ok = _git_repo_ok(repo_root_p) if git_available else False
+
+    reports: list[CheckpointSourceReport] = []
+    for name in names:
+        dest = checkpoint_root_p / f"{name}.npz"
+        valid_train_candidates = tuple(
+            p for p in _latest_train_candidates(output_root_p, str(name)) if is_valid_unfolding_checkpoint(p)
+        )
+        git_candidates: list[str] = []
+        for path in [dest, legacy_root / f"{name}.npz"]:
+            rel = _repo_relpath(path, repo_root_p)
+            if rel is not None and rel not in git_candidates:
+                git_candidates.append(rel)
+        git_head_candidates_present: tuple[str, ...] = tuple(
+            rel for rel in git_candidates if git_available and git_repo_ok and _git_head_has_path(repo_root_p, rel)
+        )
+        reports.append(
+            CheckpointSourceReport(
+                name=str(name),
+                destination=dest,
+                destination_exists=dest.exists(),
+                destination_valid=is_valid_unfolding_checkpoint(dest),
+                valid_train_candidates=valid_train_candidates,
+                git_candidates=tuple(git_candidates),
+                git_head_candidates_present=git_head_candidates_present,
+                git_available=git_available,
+                git_repo_ok=git_repo_ok,
+            )
+        )
+    return reports
 
 
 def ensure_checkpoint_files(
@@ -233,6 +308,8 @@ def ensure_checkpoint_files(
 
 __all__ = [
     "CheckpointRepair",
+    "CheckpointSourceReport",
+    "checkpoint_recovery_report",
     "checkpoint_roots_from_cfg",
     "ensure_checkpoint_files",
     "is_valid_unfolding_checkpoint",
