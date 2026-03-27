@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import _repo_bootstrap as _rb
-
-_rb.bootstrap()
-
 import argparse
 from pathlib import Path
 from typing import Dict, List
 
 import pandas as pd
+
+import _repo_bootstrap as _rb
+
+_rb.bootstrap()
 
 from fr3_sim.channel import generate_fs_stats, generate_ue_channels
 from fr3_sim.topology import generate_fixed_service_locations, generate_hexgrid_topology
@@ -42,7 +42,12 @@ def main() -> None:
     pf = twc.get("pf", {}) or {}
 
     twc_paths = get_twc_paths(cfg)
-    models = load_models(twc_paths.checkpoint_root, names=["soft", "cognitive"])
+    models = load_models(
+        twc_paths.checkpoint_root,
+        names=["soft", "cognitive"],
+        output_root=twc_paths.output_root,
+        repo_root=twc_paths.project_root,
+    )
     missing = [n for n in ["soft", "cognitive"] if n not in models]
     if missing:
         raise FileNotFoundError(f"Missing checkpoints in {twc_paths.checkpoint_root}: {missing}")
@@ -65,7 +70,11 @@ def main() -> None:
     noise_var_watt = _noise(cfg, snr_db)
 
     topo_fixed = generate_hexgrid_topology(cfg, batch_size=batch_size)
-    fs_loc_fixed = generate_fixed_service_locations(cfg, topo_fixed, batch_size=batch_size) if bool(cfg.raw.get("fixed_service", {}).get("enabled", False)) else None
+    fs_loc_fixed = (
+        generate_fixed_service_locations(cfg, topo_fixed, batch_size=batch_size)
+        if bool(cfg.raw.get("fixed_service", {}).get("enabled", False))
+        else None
+    )
     fs_fixed = generate_fs_stats(cfg, topo_fixed, fs_loc_fixed, batch_size=batch_size) if fs_loc_fixed is not None else None
 
     summary_rows: List[Dict[str, float | str]] = []
@@ -81,13 +90,22 @@ def main() -> None:
                 seed_all(base_seed + batch_index)
             topo = topo_fixed if freeze_topology else generate_hexgrid_topology(cfg, batch_size=batch_size)
             fs_loc = fs_loc_fixed if freeze_topology else (
-                generate_fixed_service_locations(cfg, topo, batch_size=batch_size) if bool(cfg.raw.get("fixed_service", {}).get("enabled", False)) else None
+                generate_fixed_service_locations(cfg, topo, batch_size=batch_size)
+                if bool(cfg.raw.get("fixed_service", {}).get("enabled", False))
+                else None
             )
-            fs = fs_fixed if freeze_topology else (generate_fs_stats(cfg, topo, fs_loc, batch_size=batch_size) if fs_loc is not None else None)
+            fs = fs_fixed if freeze_topology else (
+                generate_fs_stats(cfg, topo, fs_loc, batch_size=batch_size) if fs_loc is not None else None
+            )
 
             H_slots_flat = [generate_ue_channels(cfg, topo, batch_size=batch_size) for _ in range(num_slots)]
             H_slots_sel = [
-                make_frequency_selective_channels(H0, cfg=cfg, tau_rms_ns=float(tau), seed=base_seed + 1000 * batch_index + 13 * slot)
+                make_frequency_selective_channels(
+                    H0,
+                    cfg=cfg,
+                    tau_rms_ns=float(tau),
+                    seed=base_seed + 1000 * batch_index + 13 * slot,
+                )
                 for slot, H0 in enumerate(H_slots_flat)
             ]
 
@@ -118,10 +136,14 @@ def main() -> None:
                 )
                 row_flat = dict(s_flat)
                 row_flat.update(diag)
-                row_flat.update({"channel_modeling": "flat", "tau_rms_ns": float(tau), "batch_index": float(batch_index)})
+                row_flat.update(
+                    {"channel_modeling": "flat", "tau_rms_ns": float(tau), "batch_index": float(batch_index)}
+                )
                 row_sel = dict(s_sel)
                 row_sel.update(diag)
-                row_sel.update({"channel_modeling": "selective", "tau_rms_ns": float(tau), "batch_index": float(batch_index)})
+                row_sel.update(
+                    {"channel_modeling": "selective", "tau_rms_ns": float(tau), "batch_index": float(batch_index)}
+                )
                 summary_rows.extend([row_flat, row_sel])
 
                 fairness_key = "pf_jain_fairness" if "pf_jain_fairness" in s_flat else "jain_fairness"
@@ -131,10 +153,19 @@ def main() -> None:
                         "tau_rms_ns": float(tau),
                         "batch_index": float(batch_index),
                         **diag,
-                        "rate_gap_bps_per_hz": float(s_flat["weighted_sum_rate_bps_per_hz"] - s_sel["weighted_sum_rate_bps_per_hz"]),
-                        "fairness_gap": float(s_flat.get(fairness_key, float('nan')) - s_sel.get(fairness_key, float('nan'))),
-                        "coverage_gap": float(s_flat.get("coverage_rate", float('nan')) - s_sel.get("coverage_rate", float('nan'))),
-                        "protection_gap": float(s_flat.get("protection_satisfaction", float('nan')) - s_sel.get("protection_satisfaction", float('nan'))),
+                        "rate_gap_bps_per_hz": float(
+                            s_flat["weighted_sum_rate_bps_per_hz"] - s_sel["weighted_sum_rate_bps_per_hz"]
+                        ),
+                        "fairness_gap": float(
+                            s_flat.get(fairness_key, float("nan")) - s_sel.get(fairness_key, float("nan"))
+                        ),
+                        "coverage_gap": float(
+                            s_flat.get("coverage_rate", float("nan")) - s_sel.get("coverage_rate", float("nan"))
+                        ),
+                        "protection_gap": float(
+                            s_flat.get("protection_satisfaction", float("nan"))
+                            - s_sel.get("protection_satisfaction", float("nan"))
+                        ),
                     }
                 )
             print(f"finished tau={float(tau):.1f} ns batch={batch_index}")
@@ -143,7 +174,11 @@ def main() -> None:
     gap_df = pd.DataFrame(gap_rows)
     summary_df.to_csv(root / "summary.csv", index=False)
     gap_df.to_csv(root / "gap.csv", index=False)
-    save_grouped_mean(summary_df, root / "summary_mean.csv", group_cols=["algorithm", "tau_rms_ns", "channel_modeling"])
+    save_grouped_mean(
+        summary_df,
+        root / "summary_mean.csv",
+        group_cols=["algorithm", "tau_rms_ns", "channel_modeling"],
+    )
     save_grouped_mean(gap_df, root / "gap_mean.csv", group_cols=["algorithm", "tau_rms_ns"])
     print(f"Saved selectivity suite to: {root}")
 

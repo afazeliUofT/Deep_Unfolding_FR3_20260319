@@ -2,19 +2,33 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-KEEP_CHECKPOINTS=1
-if [[ "${1:-}" == "--all" ]]; then
-  KEEP_CHECKPOINTS=0
-fi
+PRESERVE_CHECKPOINTS=1
+
+for arg in "$@"; do
+    case "$arg" in
+        --all)
+            # Backward-compatible alias: keep the canonical checkpoints.
+            PRESERVE_CHECKPOINTS=1
+            ;;
+        --purge-checkpoints)
+            PRESERVE_CHECKPOINTS=0
+            ;;
+        *)
+            echo "Unknown option: $arg" >&2
+            echo "Usage: bash scripts/clean_old_twc_outputs.sh [--all] [--purge-checkpoints]" >&2
+            exit 2
+            ;;
+    esac
+done
 
 mkdir -p "$ROOT/results_twc" "$ROOT/logs"
+mkdir -p "$ROOT/results_twc/checkpoints"
 
-if [[ "$KEEP_CHECKPOINTS" == "1" ]]; then
-  mkdir -p "$ROOT/results_twc/checkpoints"
-  find "$ROOT/results_twc" -mindepth 1 -maxdepth 1 ! -name checkpoints -exec rm -rf {} + 2>/dev/null || true
-else
-  rm -rf "$ROOT/results_twc"
-  mkdir -p "$ROOT/results_twc"
+find "$ROOT/results_twc" -mindepth 1 -maxdepth 1 ! -name checkpoints -exec rm -rf {} + 2>/dev/null || true
+
+if [[ "$PRESERVE_CHECKPOINTS" == "0" ]]; then
+    rm -rf "$ROOT/results_twc/checkpoints"
+    mkdir -p "$ROOT/results_twc/checkpoints"
 fi
 
 rm -rf "$ROOT"/results_twc/scaling_*/subruns 2>/dev/null || true
@@ -23,8 +37,8 @@ find "$ROOT" -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null ||
 find "$ROOT" -type f -name "*.pyc" -delete 2>/dev/null || true
 find "$ROOT" -maxdepth 1 -type f -name 'twc_patch_fix*.zip' -delete 2>/dev/null || true
 
-if [[ "$KEEP_CHECKPOINTS" == "1" ]]; then
-  echo "Cleaned old TWC outputs/logs while preserving results_twc/checkpoints"
+if [[ "$PRESERVE_CHECKPOINTS" == "1" ]]; then
+    echo "Cleaned old TWC outputs/logs while preserving results_twc/checkpoints"
 else
-  echo "Cleaned all TWC outputs/logs including checkpoints"
+    echo "Cleaned old TWC outputs/logs and purged results_twc/checkpoints"
 fi

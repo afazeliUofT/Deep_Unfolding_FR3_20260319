@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, Optional, Sequence
 
 import pandas as pd
 
+from .checkpoints import ensure_checkpoint_files
 from .common import save_csv
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -30,7 +32,22 @@ def latest_prefixed_dir(root: str | Path, prefix: str) -> Optional[Path]:
 
 
 
-def load_models(model_dir: str | Path, names: Sequence[str]) -> Dict[str, "UnfoldedWeightedWMMSE"]:
+def load_models(
+    model_dir: str | Path,
+    names: Sequence[str],
+    *,
+    output_root: str | Path = "results_twc",
+    repo_root: str | Path | None = None,
+) -> Dict[str, "UnfoldedWeightedWMMSE"]:
+    repo_root = repo_root or os.environ.get("FR3_REPO_ROOT")
+    ensure_checkpoint_files(
+        checkpoint_root=model_dir,
+        names=names,
+        output_root=output_root,
+        repo_root=repo_root,
+        verbose=False,
+    )
+
     # Lazy import so non-training/reporting utilities do not import TensorFlow unnecessarily.
     from .unfolding import UnfoldedWeightedWMMSE
 

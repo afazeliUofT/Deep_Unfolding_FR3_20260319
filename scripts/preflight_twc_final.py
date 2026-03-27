@@ -4,13 +4,34 @@ from __future__ import annotations
 import argparse
 import copy
 import math
+import sys
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+
+def _prepend(path: Path) -> None:
+    s = str(path)
+    if path.exists() and s not in sys.path:
+        sys.path.insert(0, s)
+
+
+
+def _add_repo_paths() -> Path:
+    root = Path(__file__).resolve().parents[1]
+    for path in (root, root / "src", root / "scripts"):
+        _prepend(path)
+    return root
+
+
+REPO_ROOT = _add_repo_paths()
+
+from fr3_twc.checkpoints import checkpoint_roots_from_cfg, ensure_checkpoint_files  # noqa: E402
+
 _MIN_SIONNA_EFFECTIVE_CODE_RATE = 1.0 / 5.0
 _SIONNA_RATE_TOL = 1.0e-12
+
 
 
 def parse_args() -> argparse.Namespace:
@@ -25,6 +46,7 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+
 def _deep_merge(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
     out = copy.deepcopy(base)
     for key, val in update.items():
@@ -35,12 +57,14 @@ def _deep_merge(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+
 def _load_yaml(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
     if not isinstance(data, dict):
         raise ValueError(f"Config file {path} did not parse to a dict")
     return data
+
 
 
 def _load_config(path: str | Path) -> dict[str, Any]:
@@ -56,6 +80,7 @@ def _load_config(path: str | Path) -> dict[str, Any]:
     return merged
 
 
+
 def _parse_override(override: str) -> tuple[list[str], Any]:
     if "=" not in str(override):
         raise ValueError(f"Override must be KEY=VALUE, got: {override}")
@@ -64,6 +89,7 @@ def _parse_override(override: str) -> tuple[list[str], Any]:
     if not keys:
         raise ValueError(f"Invalid override key path: {override}")
     return keys, yaml.safe_load(rhs)
+
 
 
 def _deep_set(d: dict[str, Any], keys: list[str], value: Any) -> None:
@@ -77,6 +103,7 @@ def _deep_set(d: dict[str, Any], keys: list[str], value: Any) -> None:
     cur[keys[-1]] = value
 
 
+
 def _apply_overrides(cfg: dict[str, Any], overrides: list[str] | None) -> dict[str, Any]:
     out = copy.deepcopy(cfg)
     for item in overrides or []:
@@ -85,20 +112,17 @@ def _apply_overrides(cfg: dict[str, Any], overrides: list[str] | None) -> dict[s
     return out
 
 
+
 def _latest_prefixed_dir(root: Path, prefix: str) -> Path | None:
     dirs = sorted([p for p in root.glob(f"{prefix}*") if p.is_dir()])
     return dirs[-1] if dirs else None
+
 
 
 def _require_file(path: Path, description: str) -> None:
     if not path.exists():
         raise FileNotFoundError(f"Missing {description}: {path}")
 
-
-def _checkpoint_root(cfg: dict[str, Any]) -> Path:
-    twc = cfg.get("twc", {}) or {}
-    output_root = Path(str(twc.get("output_root", "results_twc")))
-    return Path(str(twc.get("checkpoint_root", output_root / "checkpoints")))
 
 
 def _aligned_n_bits(k_bits: int, code_rate: float, modulation_order: int) -> int:
@@ -107,8 +131,10 @@ def _aligned_n_bits(k_bits: int, code_rate: float, modulation_order: int) -> int
     return int(n_bits)
 
 
+
 def _effective_code_rate(k_bits: int, *, n_bits: int) -> float:
     return float(int(k_bits) / max(int(n_bits), 1))
+
 
 
 def _validate_sionna_fer_grid(*, modulation_orders: list[int], code_rates: list[float], k_bits: int) -> None:
@@ -138,9 +164,22 @@ def _validate_sionna_fer_grid(*, modulation_orders: list[int], code_rates: list[
 
 
 def _check_checkpoints(cfg: dict[str, Any]) -> None:
-    ckpt_root = _checkpoint_root(cfg)
+    output_root, ckpt_root = checkpoint_roots_from_cfg(cfg, repo_root=REPO_ROOT)
+    repairs = ensure_checkpoint_files(
+        checkpoint_root=ckpt_root,
+        names=["soft", "cognitive"],
+        output_root=output_root,
+        repo_root=REPO_ROOT,
+        verbose=False,
+    )
+    for repair in repairs:
+        print(
+            f"CHECKPOINT_RESTORED name={repair.name} source={repair.source} "
+            f"destination={repair.destination}"
+        )
     for name in ["soft", "cognitive"]:
         _require_file(ckpt_root / f"{name}.npz", f"{name} checkpoint")
+
 
 
 def _check_eval_config(cfg: dict[str, Any]) -> None:

@@ -16,11 +16,13 @@ from fr3_twc.pipeline import default_baseline_algorithms, default_unfolded_algor
 from fr3_twc.reporting import load_models, save_grouped_mean
 
 
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Run scaling suite over antennas and users")
     p.add_argument("--config", type=str, default="configs/twc_scaling.yaml")
     p.add_argument("--set", dest="overrides", action="append", default=None)
     return p.parse_args()
+
 
 
 def main() -> None:
@@ -30,7 +32,12 @@ def main() -> None:
     sc = twc.get("scaling", {}) or {}
 
     twc_paths = get_twc_paths(cfg0)
-    models = load_models(twc_paths.checkpoint_root, names=["soft", "cognitive"])
+    models = load_models(
+        twc_paths.checkpoint_root,
+        names=["soft", "cognitive"],
+        output_root=twc_paths.output_root,
+        repo_root=twc_paths.project_root,
+    )
     missing = [n for n in ["soft", "cognitive"] if n not in models]
     if missing:
         raise FileNotFoundError(f"Missing checkpoints in {twc_paths.checkpoint_root}: {missing}")

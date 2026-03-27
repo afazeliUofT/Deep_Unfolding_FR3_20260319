@@ -10,12 +10,9 @@ _rb.bootstrap()
 
 from fr3_twc.config import get_twc_paths, load_twc_config
 from fr3_twc.fer import fer_from_algorithm_summary, validate_sionna_fer_grid
-from fr3_twc.pipeline import (
-    default_baseline_algorithms,
-    default_unfolded_algorithms,
-    run_suite,
-)
+from fr3_twc.pipeline import default_baseline_algorithms, default_unfolded_algorithms, run_suite
 from fr3_twc.reporting import load_models, save_grouped_mean
+
 
 
 def parse_args() -> argparse.Namespace:
@@ -26,9 +23,15 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+
 def _prevalidate_eval(cfg) -> None:
     twc_paths = get_twc_paths(cfg)
-    models = load_models(twc_paths.checkpoint_root, names=["soft", "cognitive"])
+    models = load_models(
+        twc_paths.checkpoint_root,
+        names=["soft", "cognitive"],
+        output_root=twc_paths.output_root,
+        repo_root=twc_paths.project_root,
+    )
     missing = [n for n in ["soft", "cognitive"] if n not in models]
     if missing:
         raise FileNotFoundError(f"Missing checkpoints in {twc_paths.checkpoint_root}: {missing}")
@@ -44,15 +47,21 @@ def _prevalidate_eval(cfg) -> None:
         )
 
 
+
 def main() -> None:
     args = parse_args()
     cfg = load_twc_config(args.config, overrides=args.overrides)
     _prevalidate_eval(cfg)
 
     twc_paths = get_twc_paths(cfg)
-    models = load_models(twc_paths.checkpoint_root, names=["soft", "cognitive"])
-
+    models = load_models(
+        twc_paths.checkpoint_root,
+        names=["soft", "cognitive"],
+        output_root=twc_paths.output_root,
+        repo_root=twc_paths.project_root,
+    )
     algs = default_baseline_algorithms() + default_unfolded_algorithms()
+
     art = run_suite(
         cfg=cfg,
         suite_name=args.suite_name,
@@ -98,7 +107,6 @@ def main() -> None:
     )
     fer_path = art.paths.root / "fer.csv"
     fer_df.to_csv(fer_path, index=False)
-
     if "used_sionna" in fer_df.columns:
         used = fer_df["used_sionna"].astype(bool)
         print(f"FER_STATUS used_sionna_all={bool(used.all())} used_sionna_any={bool(used.any())}")
@@ -113,7 +121,6 @@ def main() -> None:
                 raise RuntimeError(
                     f"FER fallback detected even though require_sionna=True. See {fer_path}"
                 )
-
     print(f"Saved evaluation suite to: {art.paths.root}")
 
 
