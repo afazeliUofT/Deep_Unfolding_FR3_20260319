@@ -1,0 +1,33 @@
+algorithm,label,sweep_value,modulation_order,code_rate,k_bits,n_bits,effective_code_rate,fer,fer_input_sinr_db,sinr_source,used_sionna,backend,sionna_version,sionna_error,fer_raw,display_fer
+du_pf_cognitive,Deep unfolding + cognitive mask,-10.0,4,0.5,1024,2048,0.5,0.9609375,5.594852652400732,p50_sinr_db,True,sionna.phy,1.2.1,,0.9609375,0.9609375
+du_pf_cognitive,Deep unfolding + cognitive mask,-5.0,4,0.5,1024,2048,0.5,0.2063802083333333,6.308438252657652,p50_sinr_db,True,sionna.phy,1.2.1,,0.2063802083333333,0.2063802083333333
+du_pf_cognitive,Deep unfolding + cognitive mask,0.0,4,0.5,1024,2048,0.5,0.029296875,6.66394342109561,p50_sinr_db,True,sionna.phy,1.2.1,,0.029296875,0.029296875
+du_pf_cognitive,Deep unfolding + cognitive mask,5.0,4,0.5,1024,2048,0.5,0.0084635416666666,6.810001112520695,p50_sinr_db,True,sionna.phy,1.2.1,,0.0084635416666666,0.0084635416666666
+du_pf_cognitive,Deep unfolding + cognitive mask,10.0,4,0.5,1024,2048,0.5,0.001953125,6.877730883657932,p50_sinr_db,True,sionna.phy,1.2.1,,0.001953125,0.001953125
+du_pf_cognitive,Deep unfolding + cognitive mask,15.0,4,0.5,1024,2048,0.5,0.001953125,6.892723824828863,p50_sinr_db,True,sionna.phy,1.2.1,,0.00390625,0.00390625
+du_pf_cognitive,Deep unfolding + cognitive mask,20.0,4,0.5,1024,2048,0.5,0.001953125,6.927884437143803,p50_sinr_db,True,sionna.phy,1.2.1,,0.00390625,0.00390625
+du_pf_cognitive,Deep unfolding + cognitive mask,25.0,4,0.5,1024,2048,0.5,0.001953125,6.946353144943714,p50_sinr_db,True,sionna.phy,1.2.1,,0.0032552083333333,0.0032552083333333
+pf_fs_cognitive,Proportional-fairness + cognitive mask,-10.0,4,0.5,1024,2048,0.5,0.4817708333333333,6.096089944243431,p50_sinr_db,True,sionna.phy,1.2.1,,0.4817708333333333,0.4817708333333333
+pf_fs_cognitive,Proportional-fairness + cognitive mask,-5.0,4,0.5,1024,2048,0.5,1e-08,8.82541050389409,p50_sinr_db,True,sionna.phy,1.2.1,,0.0,0.0006510416666666666
+pf_fs_cognitive,Proportional-fairness + cognitive mask,0.0,4,0.5,1024,2048,0.5,1e-08,10.773603342473509,p50_sinr_db,True,sionna.phy,1.2.1,,0.0,0.0006510416666666666
+pf_fs_cognitive,Proportional-fairness + cognitive mask,5.0,4,0.5,1024,2048,0.5,1e-08,11.885552804917095,p50_sinr_db,True,sionna.phy,1.2.1,,0.0,0.0006510416666666666
+pf_fs_cognitive,Proportional-fairness + cognitive mask,10.0,4,0.5,1024,2048,0.5,1e-08,12.33130845054984,p50_sinr_db,True,sionna.phy,1.2.1,,0.0,0.0006510416666666666
+pf_fs_cognitive,Proportional-fairness + cognitive mask,15.0,4,0.5,1024,2048,0.5,1e-08,12.394796930253506,p50_sinr_db,True,sionna.phy,1.2.1,,0.0,0.0006510416666666666
+pf_fs_cognitive,Proportional-fairness + cognitive mask,20.0,4,0.5,1024,2048,0.5,1e-08,12.466380927711723,p50_sinr_db,True,sionna.phy,1.2.1,,0.0,0.0006510416666666666
+pf_fs_cognitive,Proportional-fairness + cognitive mask,25.0,4,0.5,1024,2048,0.5,1e-08,12.533816359937193,p50_sinr_db,True,sionna.phy,1.2.1,,0.0,0.0006510416666666666
+pf_fs_soft,Proportional-fairness + soft protection,-10.0,4,0.5,1024,2048,0.5,1.0,4.487504044547677,p50_sinr_db,True,sionna.phy,1.2.1,,1.0,1.0
+pf_fs_soft,Proportional-fairness + soft protection,-5.0,4,0.5,1024,2048,0.5,0.9970703125,5.364568175747991,p50_sinr_db,True,sionna.phy,1.2.1,,0.9970703125,0.9970703125
+pf_fs_soft,Proportional-fairness + soft protection,0.0,4,0.5,1024,2048,0.5,0.078125,6.47066343575716,p50_sinr_db,True,sionna.phy,1.2.1,,0.078125,0.078125
+pf_fs_soft,Proportional-fairness + soft protection,5.0,4,0.5,1024,2048,0.5,1e-08,7.176626132801175,p50_sinr_db,True,sionna.phy,1.2.1,,0.0,0.0006510416666666666
+pf_fs_soft,Proportional-fairness + soft protection,10.0,4,0.5,1024,2048,0.5,1e-08,7.532237173989415,p50_sinr_db,True,sionna.phy,1.2.1,,0.0,0.0006510416666666666
+pf_fs_soft,Proportional-fairness + soft protection,15.0,4,0.5,1024,2048,0.5,1e-08,7.721581552177668,p50_sinr_db,True,sionna.phy,1.2.1,,0.0,0.0006510416666666666
+pf_fs_soft,Proportional-fairness + soft protection,20.0,4,0.5,1024,2048,0.5,1e-08,7.6766770258545876,p50_sinr_db,True,sionna.phy,1.2.1,,0.0,0.0006510416666666666
+pf_fs_soft,Proportional-fairness + soft protection,25.0,4,0.5,1024,2048,0.5,1e-08,7.782688578590751,p50_sinr_db,True,sionna.phy,1.2.1,,0.0,0.0006510416666666666
+edge_fs_soft,Edge-weighted soft protection,-10.0,4,0.5,1024,2048,0.5,1.0,4.297338485717773,p50_sinr_db,True,sionna.phy,1.2.1,,1.0,1.0
+edge_fs_soft,Edge-weighted soft protection,-5.0,4,0.5,1024,2048,0.5,0.9892578125,5.440690821036696,p50_sinr_db,True,sionna.phy,1.2.1,,0.9892578125,0.9892578125
+edge_fs_soft,Edge-weighted soft protection,0.0,4,0.5,1024,2048,0.5,0.0013020833333333,6.958110714331269,p50_sinr_db,True,sionna.phy,1.2.1,,0.0013020833333333,0.0013020833333333
+edge_fs_soft,Edge-weighted soft protection,5.0,4,0.5,1024,2048,0.5,1e-08,7.893857499584556,p50_sinr_db,True,sionna.phy,1.2.1,,0.0,0.0006510416666666666
+edge_fs_soft,Edge-weighted soft protection,10.0,4,0.5,1024,2048,0.5,1e-08,8.474117426201701,p50_sinr_db,True,sionna.phy,1.2.1,,0.0,0.0006510416666666666
+edge_fs_soft,Edge-weighted soft protection,15.0,4,0.5,1024,2048,0.5,1e-08,8.472950587049127,p50_sinr_db,True,sionna.phy,1.2.1,,0.0,0.0006510416666666666
+edge_fs_soft,Edge-weighted soft protection,20.0,4,0.5,1024,2048,0.5,1e-08,8.453514616936445,p50_sinr_db,True,sionna.phy,1.2.1,,0.0,0.0006510416666666666
+edge_fs_soft,Edge-weighted soft protection,25.0,4,0.5,1024,2048,0.5,1e-08,8.542688317596912,p50_sinr_db,True,sionna.phy,1.2.1,,0.0,0.0006510416666666666

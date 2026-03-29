@@ -410,6 +410,11 @@ def _build_selectivity(gap_df: pd.DataFrame, out_dir: Path) -> None:
 
 def _build_selected_fer(fer_df: pd.DataFrame, out_dir: Path, repo_root: Path) -> tuple[str, tuple[float, float], float]:
     chosen, mcs_label = _select_publication_mcs(fer_df)
+    if "fer_input_sinr_db" not in chosen.columns:
+        raise KeyError(
+            "Missing fer_input_sinr_db in selected FER data. "
+            f"Available columns: {sorted(chosen.columns.tolist())}"
+        )
     chosen, zero_error_floor = _prepare_fer_display_df(chosen, repo_root)
     xlo, xhi = _xlim_from_transition(chosen, x_col="fer_input_sinr_db")
 
@@ -419,7 +424,7 @@ def _build_selected_fer(fer_df: pd.DataFrame, out_dir: Path, repo_root: Path) ->
         sub = chosen[chosen["algorithm"] == algo].sort_values("sweep_value")
         _plot_curve_with_ci(
             axes[0],
-            sub.rename(columns={"fer_input_sinr_db": "mean"}),
+            sub,
             x_col="sweep_value",
             y_col="fer_input_sinr_db",
             label=_label(algo),

@@ -20,5 +20,17 @@ export PYTHONPATH="$ROOT/scripts:$ROOT/src:$ROOT:${PYTHONPATH:-}"
 export FR3_REPO_ROOT="$ROOT"
 export MPLBACKEND=Agg
 
+# Always rebuild the publication folder from scratch to avoid stale figures/CSVs.
+rm -rf results_twc/Publication_Level_Final
+
 python -u scripts/plot_publication_level_final.py --output-root results_twc --out-dir results_twc/Publication_Level_Final
 python -u scripts/export_publication_level_final_csvs.py --output-root results_twc --out-dir results_twc/Publication_Level_Final
+
+# Hard checks so a partial publication folder is never mistaken for success.
+test -f results_twc/Publication_Level_Final/Fig06_Selected_FER.png
+test -f results_twc/Publication_Level_Final/Fig06_Selected_FER.pdf
+test -d results_twc/Publication_Level_Final/csv_data
+test -f results_twc/Publication_Level_Final/csv_data/Fig06_Selected_FER.csv
+test -f results_twc/Publication_Level_Final/csv_data/00_Publication_Level_Final_Metadata.csv
+
+echo "PUBLICATION_LEVEL_FINAL_OK"
