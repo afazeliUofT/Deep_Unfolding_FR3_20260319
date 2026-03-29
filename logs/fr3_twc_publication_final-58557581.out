@@ -1,0 +1,31 @@
+2026-03-29 18:13:27.869308: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:485] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2026-03-29 18:13:28.024110: E external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:8454] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2026-03-29 18:13:28.077740: E external/local_xla/xla/stream_executor/cuda/cuda_blas.cc:1452] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2026-03-29 18:13:28.501194: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2026-03-29 18:13:35.105721: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Could not find TensorRT
+Traceback (most recent call last):
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/venv_fr3_twc/lib/python3.10/site-packages/pandas/core/indexes/base.py", line 3805, in get_loc
+    return self._engine.get_loc(casted_key)
+  File "index.pyx", line 167, in pandas._libs.index.IndexEngine.get_loc
+  File "index.pyx", line 196, in pandas._libs.index.IndexEngine.get_loc
+  File "pandas/_libs/hashtable_class_helper.pxi", line 7081, in pandas._libs.hashtable.PyObjectHashTable.get_item
+  File "pandas/_libs/hashtable_class_helper.pxi", line 7089, in pandas._libs.hashtable.PyObjectHashTable.get_item
+KeyError: 'fer_input_sinr_db'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/scripts/plot_publication_level_final.py", line 511, in <module>
+    main()
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/scripts/plot_publication_level_final.py", line 482, in main
+    mcs_label, fer_xlim, zero_error_floor = _build_selected_fer(fer_df, out_dir, repo_root)
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/scripts/plot_publication_level_final.py", line 420, in _build_selected_fer
+    _plot_curve_with_ci(
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/scripts/plot_publication_level_final.py", line 154, in _plot_curve_with_ci
+    y = df[y_col].to_numpy(dtype=float)
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/venv_fr3_twc/lib/python3.10/site-packages/pandas/core/frame.py", line 4102, in __getitem__
+    indexer = self.columns.get_loc(key)
+  File "/home/rsadve1/Deep_Unfolding_FR3_20260319/venv_fr3_twc/lib/python3.10/site-packages/pandas/core/indexes/base.py", line 3812, in get_loc
+    raise KeyError(key) from err
+KeyError: 'fer_input_sinr_db'

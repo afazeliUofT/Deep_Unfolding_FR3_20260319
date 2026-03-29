@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import argparse
-import math
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -19,14 +19,14 @@ except Exception:  # pragma: no cover
 
 
 ALGO_LABELS = {
-    "du_pf_cognitive": "DU-Cognitive",
-    "du_pf_soft": "DU-Soft",
-    "pf_fs_cognitive": "PF-Cognitive",
-    "pf_fs_soft": "PF-Soft",
-    "pf_fs_hybrid": "PF-Hybrid",
-    "edge_fs_soft": "Edge-Soft",
-    "ew_fs_soft": "EW-Soft",
-    "ew_no_fs": "EW-NoFS",
+    "du_pf_cognitive": "Deep unfolding + cognitive mask",
+    "du_pf_soft": "Deep unfolding + soft protection",
+    "pf_fs_cognitive": "Proportional-fairness + cognitive mask",
+    "pf_fs_soft": "Proportional-fairness + soft protection",
+    "pf_fs_hybrid": "Proportional-fairness hybrid",
+    "edge_fs_soft": "Edge-weighted soft protection",
+    "ew_fs_soft": "Edge-weighted soft protection (equal weights)",
+    "ew_no_fs": "Equal weights without fixed-service protection",
 }
 
 ALGO_ORDER = [
@@ -40,7 +40,7 @@ ALGO_ORDER = [
     "ew_no_fs",
 ]
 
-MCS_LABELS = {2: "QPSK", 4: "16-QAM", 6: "64-QAM", 8: "256-QAM"}
+MCS_LABELS = {2: "Quadrature phase-shift keying", 4: "16-QAM", 6: "64-QAM", 8: "256-QAM"}
 
 MAIN_ALGOS = [
     "du_pf_cognitive",
@@ -94,7 +94,10 @@ def _filter_algos(df: pd.DataFrame, algos: Sequence[str]) -> pd.DataFrame:
     if sub.empty:
         raise ValueError(f"No rows left after filtering algorithms: {algos}")
     sub["_algo_order"] = sub["algorithm"].map({a: i for i, a in enumerate(ALGO_ORDER)}).fillna(999)
-    return sub.sort_values(["_algo_order"] + [c for c in sub.columns if c in {"sweep_value", "num_bs_ant", "tau_rms_ns", "iteration"}]).drop(columns=["_algo_order"])
+    sort_cols = ["_algo_order"] + [
+        c for c in sub.columns if c in {"sweep_value", "num_bs_ant", "num_ut_per_sector", "tau_rms_ns", "iteration", "fer_input_sinr_db"}
+    ]
+    return sub.sort_values(sort_cols).drop(columns=["_algo_order"])
 
 
 def _aggregate_mean_ci(df: pd.DataFrame, group_cols: Sequence[str], value_col: str, ci_z: float = 1.96) -> pd.DataFrame:
@@ -163,8 +166,8 @@ def _plot_curve_with_ci(
         xdl, lod = _smooth_xy(x, lo, logx=logx)
         xdu, hid = _smooth_xy(x, hi, logx=logx)
         if semilogy:
-            lod = np.maximum(lod, 1.0e-6)
-            hid = np.maximum(hid, 1.0e-6)
+            lod = np.maximum(lod, 1.0e-12)
+            hid = np.maximum(hid, 1.0e-12)
         ax.fill_between(xdl, lod, hid, color=color, alpha=0.12, linewidth=0)
 
 
@@ -174,7 +177,7 @@ def _apply_common_style() -> None:
             "font.size": 10,
             "axes.titlesize": 11,
             "axes.labelsize": 11,
-            "legend.fontsize": 9,
+            "legend.fontsize": 8.8,
             "xtick.labelsize": 10,
             "ytick.labelsize": 10,
             "lines.linewidth": 2.0,
@@ -204,10 +207,10 @@ def _select_publication_mcs(fer_df: pd.DataFrame) -> tuple[pd.DataFrame, str]:
         metric = metric[np.isfinite(metric)]
         if metric.size < 8:
             continue
-        metric = np.clip(metric, 1.0e-6, 1.0 - 1.0e-6)
+        metric = np.clip(metric, 1.0e-8, 1.0 - 1.0e-8)
         frac_transition = float(np.mean((metric >= 1.0e-4) & (metric <= 5.0e-1)))
         spread = float(np.quantile(np.log10(metric), 0.9) - np.quantile(np.log10(metric), 0.1))
-        saturation = float(np.mean(metric <= 1.0e-6) + np.mean(metric >= 0.999))
+        saturation = float(np.mean(metric <= 1.0e-8) + np.mean(metric >= 0.999))
         score = spread + 1.4 * frac_transition - 1.2 * saturation
         rows.append({"modulation_order": int(m), "code_rate": float(r), "score": score})
     if not rows:
@@ -221,20 +224,51 @@ def _select_publication_mcs(fer_df: pd.DataFrame) -> tuple[pd.DataFrame, str]:
     return chosen, label
 
 
-def _xlim_from_transition(fer_df: pd.DataFrame) -> tuple[float, float]:
+def _xlim_from_transition(fer_df: pd.DataFrame, *, x_col: str) -> tuple[float, float]:
     work = fer_df.copy()
-    work["fer"] = pd.to_numeric(work["fer"], errors="coerce")
-    trans = work[(work["fer"] >= 1.0e-4) & (work["fer"] <= 8.0e-1)]
-    x_all = sorted(work["sweep_value"].unique())
+    work["display_fer"] = pd.to_numeric(work["display_fer"], errors="coerce")
+    trans = work[(work["display_fer"] >= 1.0e-4) & (work["display_fer"] <= 8.0e-1)]
+    x_all = sorted(pd.to_numeric(work[x_col], errors="coerce").dropna().unique())
+    if not x_all:
+        raise ValueError(f"No x-values found for {x_col}")
     if trans.empty:
         return float(min(x_all)), float(max(x_all))
-    lo = float(trans["sweep_value"].min()) - 2.5
-    hi = float(trans["sweep_value"].max()) + 2.5
+    lo = float(pd.to_numeric(trans[x_col], errors="coerce").min()) - 1.0
+    hi = float(pd.to_numeric(trans[x_col], errors="coerce").max()) + 1.0
     lo = max(lo, float(min(x_all)))
     hi = min(hi, float(max(x_all)))
-    if hi - lo < 7.5:
-        hi = min(float(max(x_all)), lo + 7.5)
+    if hi - lo < 4.0:
+        hi = min(float(max(x_all)), lo + 4.0)
     return lo, hi
+
+
+def _read_num_frames_per_point(repo_root: Path) -> int:
+    cfg = repo_root / "configs" / "twc_eval_final.yaml"
+    try:
+        text = cfg.read_text(encoding="utf-8")
+    except Exception:
+        return 1536
+    m = re.search(r"num_frames_per_point:\s*([0-9]+)", text)
+    if not m:
+        return 1536
+    try:
+        val = int(m.group(1))
+        return val if val > 0 else 1536
+    except Exception:
+        return 1536
+
+
+def _prepare_fer_display_df(chosen: pd.DataFrame, repo_root: Path) -> tuple[pd.DataFrame, float]:
+    out = chosen.copy()
+    zero_error_floor = 1.0 / float(_read_num_frames_per_point(repo_root))
+    raw = pd.to_numeric(out.get("fer_raw", out.get("fer")), errors="coerce")
+    fer = pd.to_numeric(out["fer"], errors="coerce")
+    display = raw.copy()
+    display = display.where(np.isfinite(display), fer)
+    display = display.where(display > 0.0, zero_error_floor)
+    display = np.clip(display.astype(float), zero_error_floor, 1.0)
+    out["display_fer"] = display
+    return out, zero_error_floor
 
 
 def _build_main_tradeoff(eval_summary: pd.DataFrame, out_dir: Path) -> None:
@@ -260,8 +294,8 @@ def _build_main_tradeoff(eval_summary: pd.DataFrame, out_dir: Path) -> None:
     _panel_title(axes[0], "a", "Main weighted-sum-rate comparison")
     _panel_title(axes[1], "b", "Fixed-service protection comparison")
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=3, loc="upper center", bbox_to_anchor=(0.5, 1.10), frameon=False)
-    fig.tight_layout(rect=(0, 0, 1, 0.96))
+    fig.legend(handles, labels, ncol=2, loc="upper center", bbox_to_anchor=(0.5, 1.15), frameon=False)
+    fig.tight_layout(rect=(0, 0, 1, 0.92))
     _save(fig, out_dir, "Fig01_Main_SNR_Tradeoff")
 
 
@@ -289,9 +323,9 @@ def _build_unfolding_ablation(eval_summary: pd.DataFrame, out_dir: Path) -> None
     axes[1].set_ylabel("Runtime per realization [s]")
     axes[0].xaxis.set_major_locator(MaxNLocator(integer=True))
     axes[1].xaxis.set_major_locator(MaxNLocator(integer=True))
-    _panel_title(axes[0], "a", "Unfolding ablation: quality")
-    _panel_title(axes[1], "b", "Unfolding ablation: runtime")
-    text_lines = [f"Protection @ 25 dB:"] + [f"{_label(a)} = {prot25[a]:.3f}" for a in prot25.index]
+    _panel_title(axes[0], "a", "Deep-unfolding ablation: quality")
+    _panel_title(axes[1], "b", "Deep-unfolding ablation: runtime")
+    text_lines = ["Protection at 25 dB:"] + [f"{_label(a)} = {prot25[a]:.3f}" for a in prot25.index]
     axes[1].text(
         0.98,
         0.02,
@@ -299,12 +333,12 @@ def _build_unfolding_ablation(eval_summary: pd.DataFrame, out_dir: Path) -> None
         transform=axes[1].transAxes,
         ha="right",
         va="bottom",
-        fontsize=8.5,
+        fontsize=8.2,
         bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.9, edgecolor="0.7"),
     )
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=3, loc="upper center", bbox_to_anchor=(0.5, 1.10), frameon=False)
-    fig.tight_layout(rect=(0, 0, 1, 0.96))
+    fig.legend(handles, labels, ncol=2, loc="upper center", bbox_to_anchor=(0.5, 1.15), frameon=False)
+    fig.tight_layout(rect=(0, 0, 1, 0.92))
     _save(fig, out_dir, "Fig02_Unfolding_Ablation")
 
 
@@ -326,8 +360,8 @@ def _build_convergence(history_mean: pd.DataFrame, out_dir: Path, select_snr: fl
     _panel_title(axes[0], "a", f"Convergence of weighted sum rate at {int(select_snr)} dB")
     _panel_title(axes[1], "b", f"Convergence of beam update norm at {int(select_snr)} dB")
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=3, loc="upper center", bbox_to_anchor=(0.5, 1.10), frameon=False)
-    fig.tight_layout(rect=(0, 0, 1, 0.96))
+    fig.legend(handles, labels, ncol=2, loc="upper center", bbox_to_anchor=(0.5, 1.15), frameon=False)
+    fig.tight_layout(rect=(0, 0, 1, 0.92))
     _save(fig, out_dir, "Fig03_Convergence_Quality")
 
 
@@ -344,14 +378,14 @@ def _build_scaling(scaling_summary: pd.DataFrame, out_dir: Path) -> None:
         for algo in SCALING_ALGOS:
             sub = subk[subk["algorithm"] == algo].sort_values("num_bs_ant")
             _plot_curve_with_ci(ax, sub, x_col="num_bs_ant", label=_label(algo))
-        ax.set_xlabel("Number of BS antennas $M$")
+        ax.set_xlabel("Number of base-station antennas, M")
         ax.set_xticks(sorted(subk["num_bs_ant"].unique()))
-        _panel_title(ax, chr(97 + len([kk for kk in ks if kk < k])), f"$K={int(k)}$ users / sector")
+        _panel_title(ax, chr(97 + len([kk for kk in ks if kk < k])), f"K = {int(k)} users / sector")
     axes[0].set_ylabel("Weighted sum rate [bit/s/Hz]")
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=2, loc="upper center", bbox_to_anchor=(0.5, 1.12), frameon=False)
+    fig.legend(handles, labels, ncol=2, loc="upper center", bbox_to_anchor=(0.5, 1.13), frameon=False)
     fig.text(0.5, 1.02, "Scaling at SNR = 5 dB", ha="center", va="bottom", fontsize=11)
-    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    fig.tight_layout(rect=(0, 0, 1, 0.94))
     _save(fig, out_dir, "Fig04_Large_Array_Scaling")
 
 
@@ -359,13 +393,13 @@ def _build_selectivity(gap_df: pd.DataFrame, out_dir: Path) -> None:
     df = _filter_algos(gap_df, SELECTIVITY_ALGOS)
     agg = _aggregate_mean_ci(df, ["algorithm", "tau_rms_ns"], "rate_gap_bps_per_hz")
 
-    fig, ax = plt.subplots(figsize=(6.2, 4.2))
+    fig, ax = plt.subplots(figsize=(6.6, 4.4))
     for algo in _ordered_unique(df["algorithm"]):
         sub = agg[agg["algorithm"] == algo].sort_values("tau_rms_ns")
         _plot_curve_with_ci(ax, sub, x_col="tau_rms_ns", label=_label(algo), logx=True)
     ax.set_xscale("log")
-    ax.set_xlabel(r"RMS delay spread $\tau_{\mathrm{rms}}$ [ns]")
-    ax.set_ylabel("Flat-to-selective WSR gap [bit/s/Hz]")
+    ax.set_xlabel(r"Root-mean-square delay spread $\tau_{\mathrm{rms}}$ [ns]")
+    ax.set_ylabel("Flat-to-selective weighted-sum-rate gap [bit/s/Hz]")
     ax.set_xticks([10, 20, 50, 100, 200, 400, 800])
     ax.get_xaxis().set_major_formatter(plt.ScalarFormatter())
     _panel_title(ax, "a", "Frequency-selectivity robustness")
@@ -374,27 +408,44 @@ def _build_selectivity(gap_df: pd.DataFrame, out_dir: Path) -> None:
     _save(fig, out_dir, "Fig05_Frequency_Selectivity_Robustness")
 
 
-def _build_selected_fer(fer_df: pd.DataFrame, out_dir: Path) -> tuple[str, tuple[float, float]]:
+def _build_selected_fer(fer_df: pd.DataFrame, out_dir: Path, repo_root: Path) -> tuple[str, tuple[float, float], float]:
     chosen, mcs_label = _select_publication_mcs(fer_df)
-    xlo, xhi = _xlim_from_transition(chosen)
+    chosen, zero_error_floor = _prepare_fer_display_df(chosen, repo_root)
+    xlo, xhi = _xlim_from_transition(chosen, x_col="fer_input_sinr_db")
 
-    fig, ax = plt.subplots(figsize=(6.2, 4.2))
+    fig, axes = plt.subplots(1, 2, figsize=(11.0, 4.1))
+
     for algo in _ordered_unique(chosen["algorithm"]):
         sub = chosen[chosen["algorithm"] == algo].sort_values("sweep_value")
-        x = sub["sweep_value"].to_numpy(dtype=float)
-        y = np.maximum(sub["fer"].to_numpy(dtype=float), 1.0e-6)
+        _plot_curve_with_ci(
+            axes[0],
+            sub.rename(columns={"fer_input_sinr_db": "mean"}),
+            x_col="sweep_value",
+            y_col="fer_input_sinr_db",
+            label=_label(algo),
+        )
+    axes[0].set_xlabel("Swept system SNR [dB]")
+    axes[0].set_ylabel("Median effective user SINR [dB]")
+    axes[0].set_xlim(float(chosen["sweep_value"].min()), float(chosen["sweep_value"].max()))
+    _panel_title(axes[0], "a", f"Selected case: {mcs_label} — effective-SINR mapping")
+
+    for algo in _ordered_unique(chosen["algorithm"]):
+        sub = chosen[chosen["algorithm"] == algo].sort_values("fer_input_sinr_db")
+        x = sub["fer_input_sinr_db"].to_numpy(dtype=float)
+        y = np.maximum(sub["display_fer"].to_numpy(dtype=float), zero_error_floor)
         xd, yd = _smooth_xy(x, np.log10(y), logx=False)
-        line = ax.semilogy(xd, np.maximum(10 ** yd, 1.0e-6), linewidth=2.2, label=_label(algo))[0]
-        ax.semilogy(x, y, linestyle="", marker="o", markersize=5.5, color=line.get_color())
-    ax.set_xlim(xlo, xhi)
-    ax.set_ylim(1.0e-4, 1.0)
-    ax.set_xlabel("SNR [dB]")
-    ax.set_ylabel("Frame error rate")
-    _panel_title(ax, "a", f"Selected FER case: {mcs_label}")
-    ax.legend(frameon=False)
-    fig.tight_layout()
+        line = axes[1].semilogy(xd, np.maximum(10 ** yd, zero_error_floor), linewidth=2.2, label=_label(algo))[0]
+        axes[1].semilogy(x, y, linestyle="", marker="o", markersize=5.5, color=line.get_color())
+    axes[1].set_xlim(xlo, xhi)
+    axes[1].set_ylim(zero_error_floor, 1.0)
+    axes[1].set_xlabel("Median effective user SINR [dB]")
+    axes[1].set_ylabel("Frame error rate")
+    _panel_title(axes[1], "b", f"Selected case: {mcs_label} — coded-link result")
+    handles, labels = axes[1].get_legend_handles_labels()
+    fig.legend(handles, labels, ncol=2, loc="upper center", bbox_to_anchor=(0.5, 1.15), frameon=False)
+    fig.tight_layout(rect=(0, 0, 1, 0.92))
     _save(fig, out_dir, "Fig06_Selected_FER")
-    return mcs_label, (xlo, xhi)
+    return mcs_label, (xlo, xhi), zero_error_floor
 
 
 def parse_args() -> argparse.Namespace:
@@ -415,6 +466,7 @@ def main() -> None:
     scaling_dir = Path(args.scaling_dir) if args.scaling_dir else _latest_prefixed_dir(root, "scaling_")
     selectivity_dir = Path(args.selectivity_dir) if args.selectivity_dir else _latest_prefixed_dir(root, "selectivity_")
     out_dir = _ensure_dir(Path(args.out_dir) if args.out_dir else root / "Publication_Level_Final")
+    repo_root = _repo_root()
 
     eval_summary = pd.read_csv(eval_dir / "summary.csv")
     history_mean = pd.read_csv(eval_dir / "history_mean.csv")
@@ -427,7 +479,7 @@ def main() -> None:
     _build_convergence(history_mean, out_dir, select_snr=15.0)
     _build_scaling(scaling_summary, out_dir)
     _build_selectivity(gap_df, out_dir)
-    mcs_label, fer_xlim = _build_selected_fer(fer_df, out_dir)
+    mcs_label, fer_xlim, zero_error_floor = _build_selected_fer(fer_df, out_dir, repo_root)
 
     manifest_lines = [
         "Publication-Level Final Figure Set",
@@ -438,14 +490,18 @@ def main() -> None:
         "",
         "Files:",
         "- Fig01_Main_SNR_Tradeoff.(png|pdf): main weighted-sum-rate and protection comparison.",
-        "- Fig02_Unfolding_Ablation.(png|pdf): DU ablation for quality/runtime.",
+        "- Fig02_Unfolding_Ablation.(png|pdf): deep-unfolding ablation for quality and runtime.",
         "- Fig03_Convergence_Quality.(png|pdf): convergence at 15 dB.",
-        "- Fig04_Large_Array_Scaling.(png|pdf): scaling across M for K=4,6,8 at 5 dB.",
-        "- Fig05_Frequency_Selectivity_Robustness.(png|pdf): flat-to-selective WSR gap.",
-        f"- Fig06_Selected_FER.(png|pdf): selected FER case {mcs_label}, x-range {fer_xlim[0]:.1f} to {fer_xlim[1]:.1f} dB.",
+        "- Fig04_Large_Array_Scaling.(png|pdf): scaling across antenna count for K = 4, 6, and 8 at 5 dB.",
+        "- Fig05_Frequency_Selectivity_Robustness.(png|pdf): flat-to-selective weighted-sum-rate gap.",
+        f"- Fig06_Selected_FER.(png|pdf): selected coded-link case {mcs_label}; left panel maps swept SNR to median effective SINR, right panel plots frame error rate versus median effective SINR.",
         "",
-        "Note: smooth lines are shape-preserving interpolations through the simulated means; circle markers show the actual simulated operating points.",
-        "Confidence bands show approximate 95% normal-theory intervals computed from the saved raw batches where available.",
+        "Notes:",
+        "- Smooth lines are shape-preserving interpolations through the simulated means; circle markers show the actual simulated operating points.",
+        "- Confidence bands show approximate 95% normal-theory intervals computed from the saved raw batches where available.",
+        f"- Figure 6 uses the saved effective-SINR input to the strict Sionna evaluation, not the swept system SNR, because the FER engine is driven by the chosen metric p50_sinr_db in the eval configuration.",
+        f"- When zero frame errors were observed, Figure 6 plots a conservative display floor of 1/num_frames_per_point = {zero_error_floor:.6g} instead of the previous artificial 1e-8 clipping floor.",
+        "- The deep-unfolding convergence traces stop at layer 20 because the saved unfolded models have 20 layers. The longer proportional-fairness and edge-weighted traces use iterative histories from the evaluation run.",
     ]
     _write_manifest(out_dir, manifest_lines)
     print(f"Saved publication-level figures to: {out_dir}")
