@@ -21,3 +21,4 @@ export FR3_REPO_ROOT="$ROOT"
 export MPLBACKEND=Agg
 
 python -u scripts/plot_publication_level_final.py --output-root results_twc --out-dir results_twc/Publication_Level_Final
+python -u scripts/export_publication_level_final_csvs.py --output-root results_twc --out-dir results_twc/Publication_Level_Final

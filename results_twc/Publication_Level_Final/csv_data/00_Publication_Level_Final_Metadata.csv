@@ -1,0 +1,8 @@
+key,value
+eval_dir,/home/rsadve1/Deep_Unfolding_FR3_20260319/results_twc/eval_all_20260327_204618
+scaling_dir,/home/rsadve1/Deep_Unfolding_FR3_20260319/results_twc/scaling_20260327_195155
+selectivity_dir,/home/rsadve1/Deep_Unfolding_FR3_20260319/results_twc/selectivity_20260327_195506
+output_dir,results_twc/Publication_Level_Final
+du_num_layers,20
+wmmse_iterations_eval,56
+note,DU convergence traces stop at layer 20 because the saved unfolded models have 20 layers. Classical iterative baselines continue to the eval receiver iteration limit.

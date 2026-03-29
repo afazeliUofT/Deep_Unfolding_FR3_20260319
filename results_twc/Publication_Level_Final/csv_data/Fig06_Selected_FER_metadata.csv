@@ -1,0 +1,2 @@
+selected_case,snr_min_db,snr_max_db,algorithms,source_eval_dir
+16-QAM (R=0.50),-10.0,25.0,du_pf_cognitive;edge_fs_soft;pf_fs_cognitive;pf_fs_soft,/home/rsadve1/Deep_Unfolding_FR3_20260319/results_twc/eval_all_20260327_204618
