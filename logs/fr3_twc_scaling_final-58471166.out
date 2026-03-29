@@ -1,0 +1,18 @@
+CHECKPOINT_STATUS stage=before_repair name=soft dest=/home/rsadve1/Deep_Unfolding_FR3_20260319/results_twc/checkpoints/soft.npz dest_exists=1 dest_valid=1 valid_train_candidates=1 git_available=1 git_repo_ok=1 git_head_present=- git_candidates=results_twc/checkpoints/soft.npz
+CHECKPOINT_STATUS stage=before_repair name=cognitive dest=/home/rsadve1/Deep_Unfolding_FR3_20260319/results_twc/checkpoints/cognitive.npz dest_exists=1 dest_valid=1 valid_train_candidates=1 git_available=1 git_repo_ok=1 git_head_present=- git_candidates=results_twc/checkpoints/cognitive.npz
+CHECKPOINT_STATUS stage=after_repair name=soft dest=/home/rsadve1/Deep_Unfolding_FR3_20260319/results_twc/checkpoints/soft.npz dest_exists=1 dest_valid=1 valid_train_candidates=1 git_available=1 git_repo_ok=1 git_head_present=- git_candidates=results_twc/checkpoints/soft.npz
+CHECKPOINT_STATUS stage=after_repair name=cognitive dest=/home/rsadve1/Deep_Unfolding_FR3_20260319/results_twc/checkpoints/cognitive.npz dest_exists=1 dest_valid=1 valid_train_candidates=1 git_available=1 git_repo_ok=1 git_head_present=- git_candidates=results_twc/checkpoints/cognitive.npz
+PREFLIGHT_OK mode=scaling
+finished scaling point M=16 K=4 -> results_twc/scaling_20260327_195155/subruns/M16_K4_20260327_195155
+finished scaling point M=16 K=6 -> results_twc/scaling_20260327_195155/subruns/M16_K6_20260327_210702
+finished scaling point M=16 K=8 -> results_twc/scaling_20260327_195155/subruns/M16_K8_20260327_222037
+finished scaling point M=32 K=4 -> results_twc/scaling_20260327_195155/subruns/M32_K4_20260327_233453
+finished scaling point M=32 K=6 -> results_twc/scaling_20260327_195155/subruns/M32_K6_20260328_004831
+finished scaling point M=32 K=8 -> results_twc/scaling_20260327_195155/subruns/M32_K8_20260328_020144
+finished scaling point M=64 K=4 -> results_twc/scaling_20260327_195155/subruns/M64_K4_20260328_031450
+finished scaling point M=64 K=6 -> results_twc/scaling_20260327_195155/subruns/M64_K6_20260328_042815
+finished scaling point M=64 K=8 -> results_twc/scaling_20260327_195155/subruns/M64_K8_20260328_054137
+finished scaling point M=96 K=4 -> results_twc/scaling_20260327_195155/subruns/M96_K4_20260328_065509
+finished scaling point M=96 K=6 -> results_twc/scaling_20260327_195155/subruns/M96_K6_20260328_080847
+finished scaling point M=96 K=8 -> results_twc/scaling_20260327_195155/subruns/M96_K8_20260328_092250
+Saved scaling suite to: results_twc/scaling_20260327_195155

@@ -1,0 +1,109 @@
+TRAIN_JOB variant=cognitive root=/home/rsadve1/Deep_Unfolding_FR3_20260319 venv=venv_fr3_twc config=/home/rsadve1/Deep_Unfolding_FR3_20260319/configs/twc_train_final.yaml
+TRAIN_PREFLIGHT_OK variant=cognitive batch_size=1 snr_db=-10.00 loss=-292.821350 num_vars=3
+VALID step=0001 variant=cognitive train_loss=-346.4651 val_loss=-347.6408 lr=8.0000e-04
+step=0001 variant=cognitive snr_db=+0.0 loss=-346.4651 wsr=346.465 fs_violation=7.926e-17 lr=8.0000e-04
+step=0050 variant=cognitive snr_db=+20.0 loss=-391.3954 wsr=391.395 fs_violation=8.064e-19 lr=8.0000e-04
+step=0100 variant=cognitive snr_db=+20.0 loss=-419.0284 wsr=419.028 fs_violation=1.694e-21 lr=8.0000e-04
+step=0150 variant=cognitive snr_db=+0.0 loss=-390.8926 wsr=390.893 fs_violation=0.000e+00 lr=8.0000e-04
+VALID step=0200 variant=cognitive train_loss=-321.7245 val_loss=-347.8351 lr=8.0000e-04
+step=0200 variant=cognitive snr_db=+10.0 loss=-321.7245 wsr=321.725 fs_violation=4.553e-17 lr=8.0000e-04
+step=0250 variant=cognitive snr_db=-10.0 loss=-276.4940 wsr=276.494 fs_violation=9.265e-17 lr=8.0000e-04
+step=0300 variant=cognitive snr_db=-5.0 loss=-313.4048 wsr=313.405 fs_violation=8.036e-17 lr=8.0000e-04
+step=0350 variant=cognitive snr_db=+5.0 loss=-354.4478 wsr=354.448 fs_violation=0.000e+00 lr=8.0000e-04
+VALID step=0400 variant=cognitive train_loss=-384.8216 val_loss=-348.5893 lr=8.0000e-04
+step=0400 variant=cognitive snr_db=+15.0 loss=-384.8216 wsr=384.822 fs_violation=9.519e-17 lr=8.0000e-04
+step=0450 variant=cognitive snr_db=+0.0 loss=-449.8701 wsr=449.870 fs_violation=4.562e-18 lr=8.0000e-04
+step=0500 variant=cognitive snr_db=+10.0 loss=-273.9045 wsr=273.904 fs_violation=6.417e-17 lr=8.0000e-04
+step=0550 variant=cognitive snr_db=+5.0 loss=-476.1775 wsr=476.177 fs_violation=0.000e+00 lr=8.0000e-04
+VALID step=0600 variant=cognitive train_loss=-315.5278 val_loss=-350.3459 lr=8.0000e-04
+step=0600 variant=cognitive snr_db=-10.0 loss=-315.5278 wsr=315.528 fs_violation=2.541e-21 lr=8.0000e-04
+step=0650 variant=cognitive snr_db=+25.0 loss=-320.7213 wsr=320.721 fs_violation=4.259e-18 lr=8.0000e-04
+step=0700 variant=cognitive snr_db=+15.0 loss=-253.2446 wsr=253.245 fs_violation=9.493e-17 lr=8.0000e-04
+step=0750 variant=cognitive snr_db=+5.0 loss=-269.7792 wsr=269.779 fs_violation=7.246e-17 lr=8.0000e-04
+VALID step=0800 variant=cognitive train_loss=-317.8665 val_loss=-347.7412 lr=8.0000e-04
+step=0800 variant=cognitive snr_db=-10.0 loss=-317.8665 wsr=317.866 fs_violation=4.997e-18 lr=8.0000e-04
+step=0850 variant=cognitive snr_db=+0.0 loss=-364.9213 wsr=364.921 fs_violation=2.108e-17 lr=8.0000e-04
+step=0900 variant=cognitive snr_db=+15.0 loss=-385.7322 wsr=385.732 fs_violation=7.081e-17 lr=8.0000e-04
+step=0950 variant=cognitive snr_db=+15.0 loss=-304.1390 wsr=304.139 fs_violation=6.953e-17 lr=8.0000e-04
+VALID step=1000 variant=cognitive train_loss=-290.4324 val_loss=-348.7425 lr=8.0000e-04
+step=1000 variant=cognitive snr_db=+5.0 loss=-290.4324 wsr=290.432 fs_violation=7.654e-18 lr=8.0000e-04
+step=1050 variant=cognitive snr_db=+15.0 loss=-450.0564 wsr=450.056 fs_violation=7.472e-17 lr=8.0000e-04
+step=1100 variant=cognitive snr_db=+10.0 loss=-453.6516 wsr=453.652 fs_violation=0.000e+00 lr=8.0000e-04
+step=1150 variant=cognitive snr_db=+25.0 loss=-250.5298 wsr=250.530 fs_violation=4.654e-17 lr=8.0000e-04
+VALID step=1200 variant=cognitive train_loss=-426.1087 val_loss=-350.3877 lr=8.0000e-04
+step=1200 variant=cognitive snr_db=+15.0 loss=-426.1087 wsr=426.109 fs_violation=8.439e-17 lr=8.0000e-04
+step=1250 variant=cognitive snr_db=+20.0 loss=-376.1395 wsr=376.139 fs_violation=8.649e-17 lr=8.0000e-04
+step=1300 variant=cognitive snr_db=+20.0 loss=-258.0679 wsr=258.068 fs_violation=8.059e-17 lr=8.0000e-04
+step=1350 variant=cognitive snr_db=+25.0 loss=-321.5370 wsr=321.537 fs_violation=6.005e-17 lr=8.0000e-04
+VALID step=1400 variant=cognitive train_loss=-328.9409 val_loss=-351.3206 lr=8.0000e-04
+step=1400 variant=cognitive snr_db=+5.0 loss=-328.9409 wsr=328.941 fs_violation=8.470e-22 lr=8.0000e-04
+step=1450 variant=cognitive snr_db=+5.0 loss=-430.0201 wsr=430.020 fs_violation=2.727e-18 lr=8.0000e-04
+step=1500 variant=cognitive snr_db=+10.0 loss=-444.1343 wsr=444.134 fs_violation=1.575e-17 lr=8.0000e-04
+step=1550 variant=cognitive snr_db=+15.0 loss=-382.5704 wsr=382.570 fs_violation=1.042e-17 lr=8.0000e-04
+LR_DECAY step=1600 old_lr=0.0008 new_lr=0.0004
+VALID step=1600 variant=cognitive train_loss=-292.7621 val_loss=-352.9059 lr=4.0000e-04
+step=1600 variant=cognitive snr_db=+15.0 loss=-292.7621 wsr=292.762 fs_violation=8.736e-16 lr=4.0000e-04
+step=1650 variant=cognitive snr_db=+25.0 loss=-355.7386 wsr=355.739 fs_violation=8.275e-17 lr=4.0000e-04
+step=1700 variant=cognitive snr_db=-10.0 loss=-306.4568 wsr=306.457 fs_violation=5.428e-17 lr=4.0000e-04
+step=1750 variant=cognitive snr_db=+0.0 loss=-377.4239 wsr=377.424 fs_violation=7.332e-17 lr=4.0000e-04
+VALID step=1800 variant=cognitive train_loss=-397.8978 val_loss=-353.9240 lr=4.0000e-04
+step=1800 variant=cognitive snr_db=+20.0 loss=-397.8978 wsr=397.898 fs_violation=8.470e-22 lr=4.0000e-04
+step=1850 variant=cognitive snr_db=-10.0 loss=-350.5115 wsr=350.512 fs_violation=6.394e-17 lr=4.0000e-04
+step=1900 variant=cognitive snr_db=-5.0 loss=-311.7865 wsr=311.787 fs_violation=2.389e-17 lr=4.0000e-04
+step=1950 variant=cognitive snr_db=+20.0 loss=-459.5952 wsr=459.595 fs_violation=8.521e-17 lr=4.0000e-04
+VALID step=2000 variant=cognitive train_loss=-325.0948 val_loss=-355.1592 lr=4.0000e-04
+step=2000 variant=cognitive snr_db=+25.0 loss=-325.0948 wsr=325.095 fs_violation=3.913e-17 lr=4.0000e-04
+step=2050 variant=cognitive snr_db=-5.0 loss=-345.1745 wsr=345.174 fs_violation=7.169e-17 lr=4.0000e-04
+step=2100 variant=cognitive snr_db=+20.0 loss=-324.7263 wsr=324.726 fs_violation=8.024e-16 lr=4.0000e-04
+step=2150 variant=cognitive snr_db=+5.0 loss=-378.7601 wsr=378.760 fs_violation=0.000e+00 lr=4.0000e-04
+VALID step=2200 variant=cognitive train_loss=-393.7583 val_loss=-355.3697 lr=4.0000e-04
+step=2200 variant=cognitive snr_db=+0.0 loss=-393.7583 wsr=393.758 fs_violation=9.945e-17 lr=4.0000e-04
+step=2250 variant=cognitive snr_db=+10.0 loss=-364.8676 wsr=364.868 fs_violation=1.602e-17 lr=4.0000e-04
+step=2300 variant=cognitive snr_db=+25.0 loss=-294.5762 wsr=294.576 fs_violation=2.740e-16 lr=4.0000e-04
+step=2350 variant=cognitive snr_db=+5.0 loss=-284.5607 wsr=284.561 fs_violation=2.591e-17 lr=4.0000e-04
+VALID step=2400 variant=cognitive train_loss=-426.0988 val_loss=-353.5919 lr=4.0000e-04
+step=2400 variant=cognitive snr_db=+10.0 loss=-426.0988 wsr=426.099 fs_violation=7.740e-18 lr=4.0000e-04
+step=2450 variant=cognitive snr_db=+10.0 loss=-438.9761 wsr=438.976 fs_violation=8.470e-22 lr=4.0000e-04
+step=2500 variant=cognitive snr_db=+10.0 loss=-401.0624 wsr=401.062 fs_violation=2.235e-18 lr=4.0000e-04
+step=2550 variant=cognitive snr_db=+5.0 loss=-327.8499 wsr=327.850 fs_violation=7.574e-15 lr=4.0000e-04
+VALID step=2600 variant=cognitive train_loss=-465.3987 val_loss=-354.5503 lr=4.0000e-04
+step=2600 variant=cognitive snr_db=+5.0 loss=-465.3987 wsr=465.399 fs_violation=0.000e+00 lr=4.0000e-04
+step=2650 variant=cognitive snr_db=-10.0 loss=-353.9513 wsr=353.951 fs_violation=3.186e-17 lr=4.0000e-04
+step=2700 variant=cognitive snr_db=+0.0 loss=-249.2208 wsr=249.221 fs_violation=5.047e-17 lr=4.0000e-04
+step=2750 variant=cognitive snr_db=+25.0 loss=-262.3738 wsr=262.374 fs_violation=9.544e-17 lr=4.0000e-04
+LR_DECAY step=2800 old_lr=0.0004 new_lr=0.0002
+VALID step=2800 variant=cognitive train_loss=-336.9991 val_loss=-355.0576 lr=2.0000e-04
+step=2800 variant=cognitive snr_db=-10.0 loss=-336.9991 wsr=336.999 fs_violation=4.347e-16 lr=2.0000e-04
+step=2850 variant=cognitive snr_db=+25.0 loss=-476.8255 wsr=476.826 fs_violation=6.129e-17 lr=2.0000e-04
+step=2900 variant=cognitive snr_db=+20.0 loss=-541.6315 wsr=541.632 fs_violation=0.000e+00 lr=2.0000e-04
+step=2950 variant=cognitive snr_db=+10.0 loss=-327.7034 wsr=327.703 fs_violation=7.803e-17 lr=2.0000e-04
+VALID step=3000 variant=cognitive train_loss=-448.2285 val_loss=-355.8554 lr=2.0000e-04
+step=3000 variant=cognitive snr_db=+15.0 loss=-448.2285 wsr=448.229 fs_violation=4.779e-17 lr=2.0000e-04
+step=3050 variant=cognitive snr_db=+15.0 loss=-384.1254 wsr=384.125 fs_violation=9.835e-17 lr=2.0000e-04
+step=3100 variant=cognitive snr_db=+25.0 loss=-286.3751 wsr=286.375 fs_violation=8.705e-17 lr=2.0000e-04
+step=3150 variant=cognitive snr_db=+25.0 loss=-255.7386 wsr=255.739 fs_violation=9.138e-17 lr=2.0000e-04
+VALID step=3200 variant=cognitive train_loss=-313.3429 val_loss=-357.3587 lr=2.0000e-04
+step=3200 variant=cognitive snr_db=-10.0 loss=-313.3429 wsr=313.343 fs_violation=1.894e-18 lr=2.0000e-04
+step=3250 variant=cognitive snr_db=+10.0 loss=-300.7514 wsr=300.751 fs_violation=9.281e-17 lr=2.0000e-04
+step=3300 variant=cognitive snr_db=+20.0 loss=-404.2426 wsr=404.243 fs_violation=5.455e-19 lr=2.0000e-04
+step=3350 variant=cognitive snr_db=+20.0 loss=-325.2499 wsr=325.250 fs_violation=3.269e-17 lr=2.0000e-04
+VALID step=3400 variant=cognitive train_loss=-455.9449 val_loss=-357.2668 lr=2.0000e-04
+step=3400 variant=cognitive snr_db=+15.0 loss=-455.9449 wsr=455.945 fs_violation=8.470e-22 lr=2.0000e-04
+step=3450 variant=cognitive snr_db=+20.0 loss=-350.7556 wsr=350.756 fs_violation=1.946e-18 lr=2.0000e-04
+step=3500 variant=cognitive snr_db=+15.0 loss=-434.0884 wsr=434.088 fs_violation=6.114e-18 lr=2.0000e-04
+step=3550 variant=cognitive snr_db=+25.0 loss=-359.8367 wsr=359.837 fs_violation=2.318e-17 lr=2.0000e-04
+LR_DECAY step=3600 old_lr=0.0002 new_lr=0.0001
+VALID step=3600 variant=cognitive train_loss=-416.9564 val_loss=-356.2351 lr=1.0000e-04
+step=3600 variant=cognitive snr_db=+5.0 loss=-416.9564 wsr=416.956 fs_violation=2.007e-17 lr=1.0000e-04
+step=3650 variant=cognitive snr_db=+15.0 loss=-396.8923 wsr=396.892 fs_violation=5.459e-17 lr=1.0000e-04
+step=3700 variant=cognitive snr_db=-5.0 loss=-309.0158 wsr=309.016 fs_violation=1.132e-17 lr=1.0000e-04
+step=3750 variant=cognitive snr_db=-5.0 loss=-334.0872 wsr=334.087 fs_violation=9.219e-17 lr=1.0000e-04
+VALID step=3800 variant=cognitive train_loss=-327.6228 val_loss=-356.2291 lr=1.0000e-04
+step=3800 variant=cognitive snr_db=-5.0 loss=-327.6228 wsr=327.623 fs_violation=0.000e+00 lr=1.0000e-04
+step=3850 variant=cognitive snr_db=+0.0 loss=-480.4489 wsr=480.449 fs_violation=0.000e+00 lr=1.0000e-04
+step=3900 variant=cognitive snr_db=+20.0 loss=-320.0162 wsr=320.016 fs_violation=5.664e-17 lr=1.0000e-04
+step=3950 variant=cognitive snr_db=+20.0 loss=-314.3838 wsr=314.384 fs_violation=3.616e-17 lr=1.0000e-04
+VALID step=4000 variant=cognitive train_loss=-413.6265 val_loss=-356.3619 lr=1.0000e-04
+step=4000 variant=cognitive snr_db=+10.0 loss=-413.6265 wsr=413.627 fs_violation=6.164e-17 lr=1.0000e-04
+Saved training outputs to: results_twc/train_cognitive_20260327_125939
+Best checkpoint: results_twc/checkpoints/cognitive.npz

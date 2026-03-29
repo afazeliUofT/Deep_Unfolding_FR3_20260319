@@ -1,0 +1,7 @@
+CHECKPOINT_STATUS stage=before_repair name=soft dest=/home/rsadve1/Deep_Unfolding_FR3_20260319/results_twc/checkpoints/soft.npz dest_exists=1 dest_valid=1 valid_train_candidates=1 git_available=1 git_repo_ok=1 git_head_present=- git_candidates=results_twc/checkpoints/soft.npz
+CHECKPOINT_STATUS stage=before_repair name=cognitive dest=/home/rsadve1/Deep_Unfolding_FR3_20260319/results_twc/checkpoints/cognitive.npz dest_exists=1 dest_valid=1 valid_train_candidates=1 git_available=1 git_repo_ok=1 git_head_present=- git_candidates=results_twc/checkpoints/cognitive.npz
+CHECKPOINT_STATUS stage=after_repair name=soft dest=/home/rsadve1/Deep_Unfolding_FR3_20260319/results_twc/checkpoints/soft.npz dest_exists=1 dest_valid=1 valid_train_candidates=1 git_available=1 git_repo_ok=1 git_head_present=- git_candidates=results_twc/checkpoints/soft.npz
+CHECKPOINT_STATUS stage=after_repair name=cognitive dest=/home/rsadve1/Deep_Unfolding_FR3_20260319/results_twc/checkpoints/cognitive.npz dest_exists=1 dest_valid=1 valid_train_candidates=1 git_available=1 git_repo_ok=1 git_head_present=- git_candidates=results_twc/checkpoints/cognitive.npz
+PREFLIGHT_OK mode=eval
+FER_STATUS used_sionna_all=True used_sionna_any=True
+Saved evaluation suite to: results_twc/eval_all_20260327_204618

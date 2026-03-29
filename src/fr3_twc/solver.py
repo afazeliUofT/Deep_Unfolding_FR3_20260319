@@ -123,10 +123,9 @@ def _deterministic_mf_init(
     )
     w0 = w0 * _to_complex_tensor(xi_gain[:, :, tf.newaxis, :], complex_dtype)
 
-    col_norm = tf.sqrt(
-        tf.reduce_sum(tf.abs(w0) ** 2, axis=2, keepdims=True) + _to_complex_tensor(1.0e-12, complex_dtype)
-    )
-    w0 = w0 / col_norm
+    col_power = tf.reduce_sum(tf.abs(w0) ** 2, axis=2, keepdims=True)
+    col_norm = tf.sqrt(tf.cast(col_power, real_dtype) + tf.cast(1.0e-12, real_dtype))
+    w0 = w0 / _to_complex_tensor(col_norm, complex_dtype)
 
     pow_b = tf.reduce_sum(tf.abs(w0) ** 2, axis=[2, 3])
     target = tf.cast(p_tot_watt / (re_scaling * T), real_dtype)

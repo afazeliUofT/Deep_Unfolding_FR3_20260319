@@ -34,4 +34,5 @@ echo "TRAIN_JOB variant=$VARIANT root=$ROOT venv=$VENV_NAME config=$CONFIG_PATH"
 if [[ "${FR3_RUN_PROBE:-0}" == "1" ]]; then
   python -u "$QUIET_PY" "$ROOT/scripts/probe_env.py"
 fi
+python -u "$QUIET_PY" "$ROOT/scripts/preflight_twc_training.py" --config "$CONFIG_PATH" --variant "$VARIANT"
 python -u "$QUIET_PY" "$ROOT/scripts/train_unfolding.py" --config "$CONFIG_PATH" --variant "$VARIANT"

@@ -1,0 +1,15 @@
+0
+algorithm
+tau_rms_ns
+batch_index
+bc50_hz
+bc90_hz
+group_bandwidth_hz
+group_over_bc50
+group_over_bc90
+flat_ok_bc50
+flat_ok_bc90
+rate_gap_bps_per_hz
+fairness_gap
+coverage_gap
+protection_gap

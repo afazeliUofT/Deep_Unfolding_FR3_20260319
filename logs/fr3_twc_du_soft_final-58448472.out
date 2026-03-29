@@ -1,0 +1,109 @@
+TRAIN_JOB variant=soft root=/home/rsadve1/Deep_Unfolding_FR3_20260319 venv=venv_fr3_twc config=/home/rsadve1/Deep_Unfolding_FR3_20260319/configs/twc_train_final.yaml
+TRAIN_PREFLIGHT_OK variant=soft batch_size=1 snr_db=-10.00 loss=-250.016617 num_vars=3
+VALID step=0001 variant=soft train_loss=-258.7847 val_loss=-281.0705 lr=8.0000e-04
+step=0001 variant=soft snr_db=+0.0 loss=-258.7847 wsr=258.785 fs_violation=2.251e-16 lr=8.0000e-04
+step=0050 variant=soft snr_db=+20.0 loss=-269.4413 wsr=269.441 fs_violation=1.699e-16 lr=8.0000e-04
+step=0100 variant=soft snr_db=+20.0 loss=-319.6165 wsr=319.617 fs_violation=1.126e-17 lr=8.0000e-04
+step=0150 variant=soft snr_db=+0.0 loss=-301.6811 wsr=301.681 fs_violation=7.885e-17 lr=8.0000e-04
+VALID step=0200 variant=soft train_loss=-250.5685 val_loss=-278.5677 lr=8.0000e-04
+step=0200 variant=soft snr_db=+10.0 loss=-250.5685 wsr=250.568 fs_violation=3.685e-15 lr=8.0000e-04
+step=0250 variant=soft snr_db=-10.0 loss=-265.7906 wsr=265.791 fs_violation=4.668e-16 lr=8.0000e-04
+step=0300 variant=soft snr_db=-5.0 loss=-258.6973 wsr=258.697 fs_violation=6.940e-17 lr=8.0000e-04
+step=0350 variant=soft snr_db=+5.0 loss=-282.0067 wsr=282.007 fs_violation=2.292e-16 lr=8.0000e-04
+VALID step=0400 variant=soft train_loss=-293.8105 val_loss=-280.0471 lr=8.0000e-04
+step=0400 variant=soft snr_db=+15.0 loss=-293.8105 wsr=293.811 fs_violation=1.269e-13 lr=8.0000e-04
+step=0450 variant=soft snr_db=+0.0 loss=-366.0853 wsr=366.085 fs_violation=9.985e-17 lr=8.0000e-04
+step=0500 variant=soft snr_db=+10.0 loss=-243.1119 wsr=243.112 fs_violation=4.911e-15 lr=8.0000e-04
+step=0550 variant=soft snr_db=+5.0 loss=-311.3632 wsr=311.363 fs_violation=9.584e-17 lr=8.0000e-04
+VALID step=0600 variant=soft train_loss=-261.2640 val_loss=-279.5308 lr=8.0000e-04
+step=0600 variant=soft snr_db=-10.0 loss=-261.2640 wsr=261.264 fs_violation=9.739e-17 lr=8.0000e-04
+step=0650 variant=soft snr_db=+25.0 loss=-249.6641 wsr=249.664 fs_violation=3.693e-15 lr=8.0000e-04
+step=0700 variant=soft snr_db=+15.0 loss=-217.4491 wsr=217.449 fs_violation=4.511e-16 lr=8.0000e-04
+step=0750 variant=soft snr_db=+5.0 loss=-235.7496 wsr=235.750 fs_violation=1.712e-15 lr=8.0000e-04
+VALID step=0800 variant=soft train_loss=-279.4657 val_loss=-282.6939 lr=8.0000e-04
+step=0800 variant=soft snr_db=-10.0 loss=-279.4657 wsr=279.466 fs_violation=2.060e-16 lr=8.0000e-04
+step=0850 variant=soft snr_db=+0.0 loss=-299.6586 wsr=299.659 fs_violation=7.529e-17 lr=8.0000e-04
+step=0900 variant=soft snr_db=+15.0 loss=-250.3085 wsr=250.308 fs_violation=6.230e-17 lr=8.0000e-04
+step=0950 variant=soft snr_db=+15.0 loss=-238.8212 wsr=238.821 fs_violation=2.386e-16 lr=8.0000e-04
+VALID step=1000 variant=soft train_loss=-262.4607 val_loss=-282.2806 lr=8.0000e-04
+step=1000 variant=soft snr_db=+5.0 loss=-262.4607 wsr=262.461 fs_violation=8.445e-17 lr=8.0000e-04
+step=1050 variant=soft snr_db=+15.0 loss=-301.6047 wsr=301.605 fs_violation=4.597e-17 lr=8.0000e-04
+step=1100 variant=soft snr_db=+10.0 loss=-286.8314 wsr=286.831 fs_violation=1.399e-15 lr=8.0000e-04
+step=1150 variant=soft snr_db=+25.0 loss=-212.1928 wsr=212.193 fs_violation=1.268e-16 lr=8.0000e-04
+VALID step=1200 variant=soft train_loss=-302.9437 val_loss=-283.7777 lr=8.0000e-04
+step=1200 variant=soft snr_db=+15.0 loss=-302.9437 wsr=302.944 fs_violation=5.069e-16 lr=8.0000e-04
+step=1250 variant=soft snr_db=+20.0 loss=-271.4048 wsr=271.405 fs_violation=1.099e-17 lr=8.0000e-04
+step=1300 variant=soft snr_db=+20.0 loss=-237.3017 wsr=237.302 fs_violation=5.211e-16 lr=8.0000e-04
+step=1350 variant=soft snr_db=+25.0 loss=-258.4691 wsr=258.469 fs_violation=5.750e-17 lr=8.0000e-04
+VALID step=1400 variant=soft train_loss=-294.2932 val_loss=-285.8346 lr=8.0000e-04
+step=1400 variant=soft snr_db=+5.0 loss=-294.2932 wsr=294.293 fs_violation=6.310e-16 lr=8.0000e-04
+step=1450 variant=soft snr_db=+5.0 loss=-324.1659 wsr=324.166 fs_violation=1.046e-16 lr=8.0000e-04
+step=1500 variant=soft snr_db=+10.0 loss=-349.5014 wsr=349.501 fs_violation=1.211e-15 lr=8.0000e-04
+step=1550 variant=soft snr_db=+15.0 loss=-278.6949 wsr=278.695 fs_violation=5.989e-17 lr=8.0000e-04
+LR_DECAY step=1600 old_lr=0.0008 new_lr=0.0004
+VALID step=1600 variant=soft train_loss=-247.4946 val_loss=-280.1773 lr=4.0000e-04
+step=1600 variant=soft snr_db=+15.0 loss=-247.4946 wsr=247.495 fs_violation=1.108e-14 lr=4.0000e-04
+step=1650 variant=soft snr_db=+25.0 loss=-280.4856 wsr=280.486 fs_violation=3.182e-17 lr=4.0000e-04
+step=1700 variant=soft snr_db=-10.0 loss=-272.6090 wsr=272.609 fs_violation=1.622e-16 lr=4.0000e-04
+step=1750 variant=soft snr_db=+0.0 loss=-325.6396 wsr=325.640 fs_violation=1.631e-16 lr=4.0000e-04
+VALID step=1800 variant=soft train_loss=-322.2190 val_loss=-280.3988 lr=4.0000e-04
+step=1800 variant=soft snr_db=+20.0 loss=-322.2190 wsr=322.219 fs_violation=1.414e-17 lr=4.0000e-04
+step=1850 variant=soft snr_db=-10.0 loss=-307.0302 wsr=307.030 fs_violation=5.098e-16 lr=4.0000e-04
+step=1900 variant=soft snr_db=-5.0 loss=-273.8887 wsr=273.889 fs_violation=1.903e-17 lr=4.0000e-04
+step=1950 variant=soft snr_db=+20.0 loss=-377.5412 wsr=377.541 fs_violation=9.846e-17 lr=4.0000e-04
+VALID step=2000 variant=soft train_loss=-258.1187 val_loss=-285.7896 lr=4.0000e-04
+step=2000 variant=soft snr_db=+25.0 loss=-258.1187 wsr=258.119 fs_violation=1.649e-14 lr=4.0000e-04
+step=2050 variant=soft snr_db=-5.0 loss=-292.5086 wsr=292.509 fs_violation=1.229e-16 lr=4.0000e-04
+step=2100 variant=soft snr_db=+20.0 loss=-288.9804 wsr=288.980 fs_violation=9.325e-15 lr=4.0000e-04
+step=2150 variant=soft snr_db=+5.0 loss=-295.7015 wsr=295.702 fs_violation=2.743e-17 lr=4.0000e-04
+VALID step=2200 variant=soft train_loss=-270.9516 val_loss=-283.9435 lr=4.0000e-04
+step=2200 variant=soft snr_db=+0.0 loss=-270.9516 wsr=270.952 fs_violation=7.995e-17 lr=4.0000e-04
+step=2250 variant=soft snr_db=+10.0 loss=-306.1246 wsr=306.125 fs_violation=3.323e-15 lr=4.0000e-04
+step=2300 variant=soft snr_db=+25.0 loss=-246.6964 wsr=246.696 fs_violation=4.175e-15 lr=4.0000e-04
+step=2350 variant=soft snr_db=+5.0 loss=-249.5878 wsr=249.588 fs_violation=7.403e-16 lr=4.0000e-04
+VALID step=2400 variant=soft train_loss=-339.1191 val_loss=-283.3818 lr=4.0000e-04
+step=2400 variant=soft snr_db=+10.0 loss=-339.1191 wsr=339.119 fs_violation=8.371e-17 lr=4.0000e-04
+step=2450 variant=soft snr_db=+10.0 loss=-304.6895 wsr=304.690 fs_violation=7.496e-17 lr=4.0000e-04
+step=2500 variant=soft snr_db=+10.0 loss=-298.9008 wsr=298.901 fs_violation=1.107e-15 lr=4.0000e-04
+step=2550 variant=soft snr_db=+5.0 loss=-271.2821 wsr=271.282 fs_violation=1.518e-14 lr=4.0000e-04
+VALID step=2600 variant=soft train_loss=-365.8148 val_loss=-283.8460 lr=4.0000e-04
+step=2600 variant=soft snr_db=+5.0 loss=-365.8148 wsr=365.815 fs_violation=3.259e-17 lr=4.0000e-04
+step=2650 variant=soft snr_db=-10.0 loss=-289.6516 wsr=289.652 fs_violation=9.908e-17 lr=4.0000e-04
+step=2700 variant=soft snr_db=+0.0 loss=-238.2193 wsr=238.219 fs_violation=1.066e-16 lr=4.0000e-04
+step=2750 variant=soft snr_db=+25.0 loss=-222.6874 wsr=222.687 fs_violation=6.026e-15 lr=4.0000e-04
+LR_DECAY step=2800 old_lr=0.0004 new_lr=0.0002
+VALID step=2800 variant=soft train_loss=-283.7926 val_loss=-285.3602 lr=2.0000e-04
+step=2800 variant=soft snr_db=-10.0 loss=-283.7926 wsr=283.793 fs_violation=1.941e-15 lr=2.0000e-04
+step=2850 variant=soft snr_db=+25.0 loss=-343.2549 wsr=343.255 fs_violation=1.831e-15 lr=2.0000e-04
+step=2900 variant=soft snr_db=+20.0 loss=-412.0533 wsr=412.053 fs_violation=0.000e+00 lr=2.0000e-04
+step=2950 variant=soft snr_db=+10.0 loss=-279.5705 wsr=279.571 fs_violation=8.781e-17 lr=2.0000e-04
+VALID step=3000 variant=soft train_loss=-322.8025 val_loss=-284.0638 lr=2.0000e-04
+step=3000 variant=soft snr_db=+15.0 loss=-322.8025 wsr=322.802 fs_violation=8.623e-17 lr=2.0000e-04
+step=3050 variant=soft snr_db=+15.0 loss=-302.6684 wsr=302.668 fs_violation=2.788e-17 lr=2.0000e-04
+step=3100 variant=soft snr_db=+25.0 loss=-250.9099 wsr=250.910 fs_violation=9.816e-17 lr=2.0000e-04
+step=3150 variant=soft snr_db=+25.0 loss=-239.2785 wsr=239.279 fs_violation=1.071e-16 lr=2.0000e-04
+VALID step=3200 variant=soft train_loss=-242.0352 val_loss=-285.5783 lr=2.0000e-04
+step=3200 variant=soft snr_db=-10.0 loss=-242.0352 wsr=242.035 fs_violation=4.481e-17 lr=2.0000e-04
+step=3250 variant=soft snr_db=+10.0 loss=-261.8347 wsr=261.835 fs_violation=4.449e-16 lr=2.0000e-04
+step=3300 variant=soft snr_db=+20.0 loss=-289.2998 wsr=289.300 fs_violation=5.957e-17 lr=2.0000e-04
+step=3350 variant=soft snr_db=+20.0 loss=-256.7392 wsr=256.739 fs_violation=2.514e-15 lr=2.0000e-04
+VALID step=3400 variant=soft train_loss=-300.3062 val_loss=-285.8924 lr=2.0000e-04
+step=3400 variant=soft snr_db=+15.0 loss=-300.3062 wsr=300.306 fs_violation=1.130e-15 lr=2.0000e-04
+step=3450 variant=soft snr_db=+20.0 loss=-286.1028 wsr=286.103 fs_violation=5.539e-17 lr=2.0000e-04
+step=3500 variant=soft snr_db=+15.0 loss=-318.9113 wsr=318.911 fs_violation=1.492e-16 lr=2.0000e-04
+step=3550 variant=soft snr_db=+25.0 loss=-265.0501 wsr=265.050 fs_violation=3.249e-16 lr=2.0000e-04
+LR_DECAY step=3600 old_lr=0.0002 new_lr=0.0001
+VALID step=3600 variant=soft train_loss=-268.4691 val_loss=-285.3917 lr=1.0000e-04
+step=3600 variant=soft snr_db=+5.0 loss=-268.4691 wsr=268.469 fs_violation=4.351e-16 lr=1.0000e-04
+step=3650 variant=soft snr_db=+15.0 loss=-281.1272 wsr=281.127 fs_violation=9.551e-17 lr=1.0000e-04
+step=3700 variant=soft snr_db=-5.0 loss=-258.7041 wsr=258.704 fs_violation=7.092e-17 lr=1.0000e-04
+step=3750 variant=soft snr_db=-5.0 loss=-283.6224 wsr=283.622 fs_violation=6.735e-15 lr=1.0000e-04
+VALID step=3800 variant=soft train_loss=-245.3215 val_loss=-285.2147 lr=1.0000e-04
+step=3800 variant=soft snr_db=-5.0 loss=-245.3215 wsr=245.322 fs_violation=7.511e-17 lr=1.0000e-04
+step=3850 variant=soft snr_db=+0.0 loss=-345.7393 wsr=345.739 fs_violation=4.470e-17 lr=1.0000e-04
+step=3900 variant=soft snr_db=+20.0 loss=-277.2482 wsr=277.248 fs_violation=3.931e-16 lr=1.0000e-04
+step=3950 variant=soft snr_db=+20.0 loss=-262.8115 wsr=262.812 fs_violation=3.237e-16 lr=1.0000e-04
+VALID step=4000 variant=soft train_loss=-296.9879 val_loss=-286.9574 lr=1.0000e-04
+step=4000 variant=soft snr_db=+10.0 loss=-296.9879 wsr=296.988 fs_violation=8.604e-17 lr=1.0000e-04
+Saved training outputs to: results_twc/train_soft_20260327_125940
+Best checkpoint: results_twc/checkpoints/soft.npz
