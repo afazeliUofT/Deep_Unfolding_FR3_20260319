@@ -12,10 +12,12 @@ import numpy as np
 import pandas as pd
 
 
+
 def _prepend(path: Path) -> None:
     s = str(path)
     if path.exists() and s not in sys.path:
         sys.path.insert(0, s)
+
 
 
 def _add_repo_paths() -> Path:
@@ -34,6 +36,7 @@ from fr3_twc.plotting import (  # noqa: E402
     plot_scaling_heatmap,
     plot_selectivity_gap,
 )
+from repair_twc_tables import load_or_repair_table, repair_existing_results  # noqa: E402
 
 
 
@@ -63,17 +66,6 @@ def _now_ts() -> str:
 def _latest_prefixed_dir(root: Path, prefix: str) -> Path | None:
     cands = sorted([p for p in root.glob(f"{prefix}*") if p.is_dir()])
     return cands[-1] if cands else None
-
-
-
-def _pick_csv(root: Path, preferred: str, fallback: str) -> Path | None:
-    p = root / preferred
-    if p.exists():
-        return p
-    q = root / fallback
-    if q.exists():
-        return q
-    return None
 
 
 
@@ -141,27 +133,36 @@ def _subset_algorithms(df: pd.DataFrame, algos: list[str]) -> pd.DataFrame:
 def _informative_fer_subset(fer_df: pd.DataFrame, target_fer: float = 1.0e-1) -> pd.DataFrame:
     if fer_df.empty:
         return fer_df
+    metric_col = "fer_raw" if "fer_raw" in fer_df.columns else "fer"
     rows = []
     for (mod_order, code_rate), sub in fer_df.groupby(["modulation_order", "code_rate"]):
-        vals = pd.to_numeric(sub["fer"], errors="coerce").to_numpy(dtype=float)
+        vals = pd.to_numeric(sub[metric_col], errors="coerce").to_numpy(dtype=float)
         vals = vals[np.isfinite(vals)]
-        if vals.size == 0:
+        if vals.size < 4:
             continue
-        median_fer = float(np.median(np.clip(vals, 1.0e-6, 1.0)))
-        score = abs(np.log10(median_fer) - np.log10(max(target_fer, 1.0e-6)))
+        vals = np.clip(vals, 1.0e-8, 1.0 - 1.0e-8)
+        frac_near_zero = float(np.mean(vals <= 1.0e-6))
+        frac_near_one = float(np.mean(vals >= 0.99))
+        spread = float(np.quantile(np.log10(vals), 0.9) - np.quantile(np.log10(vals), 0.1))
+        median_fer = float(np.median(vals))
+        target_term = -abs(np.log10(median_fer) - np.log10(max(target_fer, 1.0e-8)))
+        saturation_penalty = 2.0 * (frac_near_zero + frac_near_one)
+        score = spread + 0.25 * target_term - saturation_penalty
         rows.append(
             {
                 "modulation_order": int(mod_order),
                 "code_rate": float(code_rate),
                 "median_fer": median_fer,
                 "score": score,
+                "frac_near_zero": frac_near_zero,
+                "frac_near_one": frac_near_one,
             }
         )
     if not rows:
         return fer_df.iloc[0:0].copy()
     stats = pd.DataFrame(rows).sort_values(
         ["score", "modulation_order", "code_rate"],
-        ascending=[True, False, False],
+        ascending=[False, True, True],
     )
     best = stats.iloc[0]
     sub = fer_df[
@@ -182,15 +183,26 @@ def main() -> None:
     selectivity_dir = Path(args.selectivity_dir) if args.selectivity_dir else _latest_prefixed_dir(root, "selectivity_")
     out_dir = _ensure_dir(Path(args.out_dir) if args.out_dir else root / f"figures_twc_{_now_ts()}")
 
+    repair_existing_results(root, eval_dir=eval_dir, scaling_dir=scaling_dir, selectivity_dir=selectivity_dir)
+
     source_for_geometry = eval_dir or baseline_dir
     if source_for_geometry is not None:
         _copy_geometry(source_for_geometry, out_dir)
 
     if eval_dir is not None:
-        summary_csv = _pick_csv(eval_dir, "summary_mean.csv", "summary.csv")
-        hist_csv = _pick_csv(eval_dir, "history_mean.csv", "history.csv")
-        if summary_csv is not None:
-            df = pd.read_csv(summary_csv)
+        df = load_or_repair_table(
+            eval_dir / "summary_mean.csv",
+            eval_dir / "summary.csv",
+            ["algorithm", "sweep_value"],
+            ["algorithm", "sweep_value"],
+        )
+        h = load_or_repair_table(
+            eval_dir / "history_mean.csv",
+            eval_dir / "history.csv",
+            ["algorithm", "sweep_value", "iteration"],
+            ["algorithm"],
+        )
+        if df is not None:
             if "weighted_sum_rate_bps_per_hz" in df.columns:
                 plot_metric_vs_sweep(df, "weighted_sum_rate_bps_per_hz", out_dir / "01_weighted_sum_rate_vs_snr.png")
                 pf_df = _subset_algorithms(df, _PF_ALGOS)
@@ -237,8 +249,7 @@ def main() -> None:
             if "runtime_sec" in df.columns:
                 plot_metric_vs_sweep(df, "runtime_sec", out_dir / "06_runtime_vs_snr.png")
             _pareto_plot(df, out_dir / "07_fairness_vs_protection.png")
-        if hist_csv is not None:
-            h = pd.read_csv(hist_csv)
+        if h is not None:
             if "w_delta" in h.columns:
                 plot_convergence(h, "w_delta", out_dir / "08_convergence_w_delta.png")
             if "weighted_sum_rate" in h.columns:
@@ -269,9 +280,13 @@ def main() -> None:
             )
 
     if scaling_dir is not None:
-        scaling_csv = _pick_csv(scaling_dir, "summary_mean.csv", "summary.csv")
-        if scaling_csv is not None:
-            df = pd.read_csv(scaling_csv)
+        df = load_or_repair_table(
+            scaling_dir / "summary_mean.csv",
+            scaling_dir / "summary.csv",
+            ["algorithm", "num_bs_ant", "num_ut_per_sector", "sweep_value"],
+            ["algorithm", "num_bs_ant", "num_ut_per_sector"],
+        )
+        if df is not None:
             for algo in ["pf_fs_soft", "pf_fs_cognitive", "du_pf_soft", "du_pf_cognitive"]:
                 sub = df[df["algorithm"] == algo]
                 if not sub.empty and "weighted_sum_rate_bps_per_hz" in sub.columns:
@@ -280,9 +295,13 @@ def main() -> None:
                     plot_scaling_heatmap(sub, "runtime_sec", out_dir / f"12_scaling_runtime_{algo}.png")
 
     if selectivity_dir is not None:
-        gap_csv = _pick_csv(selectivity_dir, "gap_mean.csv", "gap.csv")
-        if gap_csv is not None:
-            gap_df = pd.read_csv(gap_csv)
+        gap_df = load_or_repair_table(
+            selectivity_dir / "gap_mean.csv",
+            selectivity_dir / "gap.csv",
+            ["algorithm", "tau_rms_ns"],
+            ["algorithm", "tau_rms_ns"],
+        )
+        if gap_df is not None:
             if "rate_gap_bps_per_hz" in gap_df.columns:
                 plot_selectivity_gap(
                     gap_df,

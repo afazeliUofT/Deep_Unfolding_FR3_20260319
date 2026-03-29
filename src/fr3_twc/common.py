@@ -56,10 +56,19 @@ def save_json(path: str | Path, obj: Any) -> None:
         json.dump(_to_builtin(obj), f, indent=2)
 
 
-def save_csv(path: str | Path, rows: Sequence[Dict[str, Any]]) -> pd.DataFrame:
+def save_csv(path: str | Path, rows: Any) -> pd.DataFrame:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    df = pd.DataFrame(list(rows))
+    if isinstance(rows, pd.DataFrame):
+        df = rows.copy()
+    elif isinstance(rows, Mapping):
+        df = pd.DataFrame([dict(rows)])
+    else:
+        materialized = list(rows)
+        if materialized and isinstance(materialized[0], pd.DataFrame):
+            df = pd.concat(materialized, axis=0, ignore_index=True)
+        else:
+            df = pd.DataFrame(materialized)
     df.to_csv(p, index=False)
     return df
 
