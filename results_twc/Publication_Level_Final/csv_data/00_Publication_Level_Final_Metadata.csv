@@ -2,9 +2,8 @@ key,value
 eval_dir,/home/rsadve1/Deep_Unfolding_FR3_20260319/results_twc/eval_all_20260327_204618
 scaling_dir,/home/rsadve1/Deep_Unfolding_FR3_20260319/results_twc/scaling_20260327_195155
 selectivity_dir,/home/rsadve1/Deep_Unfolding_FR3_20260319/results_twc/selectivity_20260327_195506
+convergence_source,/home/rsadve1/Deep_Unfolding_FR3_20260319/results_twc/publication_convergence_rollout_20260329_211844
 output_dir,results_twc/Publication_Level_Final
-du_num_layers,20
-wmmse_iterations_eval,56
-figure6_x_axis,Median effective user SINR [dB]
-figure6_zero_error_floor,0.0006510416666666666
-note,Figure 6 now shows the effective-SINR mapping and uses a conservative display floor for zero-error FER points. Deep-unfolding convergence traces stop at layer 20 because the saved unfolded models have 20 layers. Classical iterative baselines continue to the eval receiver iteration limit.
+du_num_layers_trained,20
+du_fig03_rollout_layers,56
+note,"Figure 3 can be extended without retraining from scratch by continuing the trained 20-layer deep-unfolding cognitive model with the learned layer-20 update reused after layer 20. This is a continued rollout, not a separately retrained 56-layer unfolded network."

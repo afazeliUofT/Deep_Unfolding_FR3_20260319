@@ -1,8 +1,9 @@
 Publication-Level Final Figure Set
-Created: 2026-03-29T19:41:42
+Created: 2026-03-30T00:36:37
 Eval directory: results_twc/eval_all_20260327_204618
 Scaling directory: results_twc/scaling_20260327_195155
 Selectivity directory: results_twc/selectivity_20260327_195506
+Convergence source: results_twc/publication_convergence_rollout_20260329_211844
 
 Files:
 - Fig01_Main_SNR_Tradeoff.(png|pdf): main weighted-sum-rate and protection comparison.
@@ -17,4 +18,7 @@ Notes:
 - Confidence bands show approximate 95% normal-theory intervals computed from the saved raw batches where available.
 - Figure 6 uses the saved effective-SINR input to the strict Sionna evaluation, not the swept system SNR, because the FER engine is driven by the chosen metric p50_sinr_db in the eval configuration.
 - When zero frame errors were observed, Figure 6 plots a conservative display floor of 1/num_frames_per_point = 0.000651042 instead of the previous artificial 1e-8 clipping floor.
-- The deep-unfolding convergence traces stop at layer 20 because the saved unfolded models have 20 layers. The longer proportional-fairness and edge-weighted traces use iterative histories from the evaluation run.
+- Figure 3 uses a continued rollout of the trained 20-layer deep-unfolding cognitive model out to 56 steps by reusing the learned layer-20 update for steps 21-56. This avoids retraining from scratch, but it is not a separately trained 56-layer unfolded model.
+
+CSV subfolder: results_twc/Publication_Level_Final/csv_data contains the tabular data used in each publication-level figure.
+Fig03 note: the deep-unfolding cognitive-mask curve is extended to 56 steps by continuing the trained 20-layer model with the learned layer-20 update reused for steps 21-56. This is a continued rollout, not a separately retrained 56-layer unfolded network.

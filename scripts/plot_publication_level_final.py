@@ -89,6 +89,12 @@ def _label(algo: str) -> str:
     return ALGO_LABELS.get(algo, algo)
 
 
+def _convergence_label(algo: str, has_rollout_extension: bool) -> str:
+    if algo == "du_pf_cognitive" and has_rollout_extension:
+        return "Deep unfolding + cognitive mask (continued rollout)"
+    return _label(algo)
+
+
 def _filter_algos(df: pd.DataFrame, algos: Sequence[str]) -> pd.DataFrame:
     sub = df[df["algorithm"].isin(algos)].copy()
     if sub.empty:
@@ -271,6 +277,16 @@ def _prepare_fer_display_df(chosen: pd.DataFrame, repo_root: Path) -> tuple[pd.D
     return out, zero_error_floor
 
 
+def _load_convergence_history(root: Path, eval_dir: Path) -> tuple[pd.DataFrame, str]:
+    try:
+        rollout_dir = _latest_prefixed_dir(root, "publication_convergence_rollout_")
+    except FileNotFoundError:
+        rollout_dir = None
+    if rollout_dir is not None and (rollout_dir / "history_mean.csv").exists():
+        return pd.read_csv(rollout_dir / "history_mean.csv"), str(rollout_dir)
+    return pd.read_csv(eval_dir / "history_mean.csv"), str(eval_dir)
+
+
 def _build_main_tradeoff(eval_summary: pd.DataFrame, out_dir: Path) -> None:
     df = _filter_algos(eval_summary, MAIN_ALGOS)
     df = df[df["sweep_value"] >= 0].copy()
@@ -342,27 +358,43 @@ def _build_unfolding_ablation(eval_summary: pd.DataFrame, out_dir: Path) -> None
     _save(fig, out_dir, "Fig02_Unfolding_Ablation")
 
 
-def _build_convergence(history_mean: pd.DataFrame, out_dir: Path, select_snr: float = 15.0) -> None:
+def _build_convergence(history_mean: pd.DataFrame, out_dir: Path, select_snr: float = 15.0) -> bool:
     df = _filter_algos(history_mean, CONV_ALGOS)
     df = df[np.isclose(df["sweep_value"], float(select_snr))].copy()
     if df.empty:
         raise ValueError(f"No convergence history for SNR={select_snr}")
+    has_rollout_extension = bool(
+        (df["algorithm"] == "du_pf_cognitive").any() and float(df[df["algorithm"] == "du_pf_cognitive"]["iteration"].max()) > 20.5
+    )
 
     fig, axes = plt.subplots(1, 2, figsize=(10.8, 4.0))
     for algo in _ordered_unique(df["algorithm"]):
         sub = df[df["algorithm"] == algo].sort_values("iteration")
-        axes[0].plot(sub["iteration"], sub["weighted_sum_rate"], marker="o", markersize=4.5, linewidth=2.2, label=_label(algo))
-        axes[1].semilogy(sub["iteration"], np.maximum(sub["w_delta"], 1.0e-6), marker="o", markersize=4.5, linewidth=2.2, label=_label(algo))
+        label = _convergence_label(algo, has_rollout_extension)
+        axes[0].plot(sub["iteration"], sub["weighted_sum_rate"], marker="o", markersize=4.5, linewidth=2.2, label=label)
+        axes[1].semilogy(sub["iteration"], np.maximum(sub["w_delta"], 1.0e-6), marker="o", markersize=4.5, linewidth=2.2, label=label)
     axes[0].set_xlabel("Iteration / unfolded layer")
     axes[1].set_xlabel("Iteration / unfolded layer")
     axes[0].set_ylabel("Weighted sum rate [bit/s/Hz]")
     axes[1].set_ylabel(r"Beam update norm $\|W^{(\ell)}-W^{(\ell-1)}\|$")
     _panel_title(axes[0], "a", f"Convergence of weighted sum rate at {int(select_snr)} dB")
     _panel_title(axes[1], "b", f"Convergence of beam update norm at {int(select_snr)} dB")
+    if has_rollout_extension:
+        axes[0].text(
+            0.98,
+            0.02,
+            "Deep-unfolding continuation: layers 21–56 reuse the learned layer-20 update.",
+            transform=axes[0].transAxes,
+            ha="right",
+            va="bottom",
+            fontsize=7.8,
+            bbox=dict(boxstyle="round,pad=0.25", facecolor="white", alpha=0.9, edgecolor="0.7"),
+        )
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=2, loc="upper center", bbox_to_anchor=(0.5, 1.15), frameon=False)
+    fig.legend(handles, labels, ncol=2, loc="upper center", bbox_to_anchor=(0.5, 1.18), frameon=False)
     fig.tight_layout(rect=(0, 0, 1, 0.92))
     _save(fig, out_dir, "Fig03_Convergence_Quality")
+    return has_rollout_extension
 
 
 def _build_scaling(scaling_summary: pd.DataFrame, out_dir: Path) -> None:
@@ -474,14 +506,14 @@ def main() -> None:
     repo_root = _repo_root()
 
     eval_summary = pd.read_csv(eval_dir / "summary.csv")
-    history_mean = pd.read_csv(eval_dir / "history_mean.csv")
+    history_mean, convergence_source = _load_convergence_history(root, eval_dir)
     fer_df = pd.read_csv(eval_dir / "fer.csv")
     scaling_summary = pd.read_csv(scaling_dir / "summary.csv")
     gap_df = pd.read_csv(selectivity_dir / "gap.csv")
 
     _build_main_tradeoff(eval_summary, out_dir)
     _build_unfolding_ablation(eval_summary, out_dir)
-    _build_convergence(history_mean, out_dir, select_snr=15.0)
+    has_rollout_extension = _build_convergence(history_mean, out_dir, select_snr=15.0)
     _build_scaling(scaling_summary, out_dir)
     _build_selectivity(gap_df, out_dir)
     mcs_label, fer_xlim, zero_error_floor = _build_selected_fer(fer_df, out_dir, repo_root)
@@ -492,6 +524,7 @@ def main() -> None:
         f"Eval directory: {eval_dir}",
         f"Scaling directory: {scaling_dir}",
         f"Selectivity directory: {selectivity_dir}",
+        f"Convergence source: {convergence_source}",
         "",
         "Files:",
         "- Fig01_Main_SNR_Tradeoff.(png|pdf): main weighted-sum-rate and protection comparison.",
@@ -506,8 +539,15 @@ def main() -> None:
         "- Confidence bands show approximate 95% normal-theory intervals computed from the saved raw batches where available.",
         f"- Figure 6 uses the saved effective-SINR input to the strict Sionna evaluation, not the swept system SNR, because the FER engine is driven by the chosen metric p50_sinr_db in the eval configuration.",
         f"- When zero frame errors were observed, Figure 6 plots a conservative display floor of 1/num_frames_per_point = {zero_error_floor:.6g} instead of the previous artificial 1e-8 clipping floor.",
-        "- The deep-unfolding convergence traces stop at layer 20 because the saved unfolded models have 20 layers. The longer proportional-fairness and edge-weighted traces use iterative histories from the evaluation run.",
     ]
+    if has_rollout_extension:
+        manifest_lines.append(
+            "- Figure 3 uses a continued rollout of the trained 20-layer deep-unfolding cognitive model out to 56 steps by reusing the learned layer-20 update for steps 21-56. This avoids retraining from scratch, but it is not a separately trained 56-layer unfolded model."
+        )
+    else:
+        manifest_lines.append(
+            "- The deep-unfolding convergence traces stop at layer 20 because the saved unfolded models have 20 layers. The longer proportional-fairness and edge-weighted traces use iterative histories from the evaluation run."
+        )
     _write_manifest(out_dir, manifest_lines)
     print(f"Saved publication-level figures to: {out_dir}")
 

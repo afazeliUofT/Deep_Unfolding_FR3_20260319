@@ -1,0 +1,32 @@
+{
+  "suite_name": "publication_convergence_rollout",
+  "num_algorithms": 3,
+  "algorithms": [
+    {
+      "name": "du_pf_cognitive",
+      "weight_mode": "pf",
+      "fs_mode": "budget_dual",
+      "cognitive_mask": true,
+      "use_unfolding": true,
+      "checkpoint_name": "cognitive"
+    },
+    {
+      "name": "pf_fs_cognitive",
+      "weight_mode": "pf",
+      "fs_mode": "budget_dual",
+      "cognitive_mask": true,
+      "use_unfolding": false,
+      "checkpoint_name": null
+    },
+    {
+      "name": "edge_fs_soft",
+      "weight_mode": "edge_boost",
+      "fs_mode": "budget_dual",
+      "cognitive_mask": false,
+      "use_unfolding": false,
+      "checkpoint_name": null
+    }
+  ],
+  "num_rows": 192,
+  "num_history_rows": 10752
+}

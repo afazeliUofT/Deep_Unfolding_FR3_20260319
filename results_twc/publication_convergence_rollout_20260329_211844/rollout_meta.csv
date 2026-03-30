@@ -1,0 +1,2 @@
+trained_unfolded_layers,continued_rollout_layers,snr_db,note
+20,56,15.0,"Layers beyond the trained depth reuse the last learned layer parameters. This is a continuation rollout, not a separately trained deeper model."

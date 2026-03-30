@@ -1,2 +1,2 @@
-selected_case,effective_sinr_min_db,effective_sinr_max_db,zero_error_display_floor,algorithms,source_eval_dir,x_axis_used_for_plot,left_panel_used_for_plot
-16-QAM (R=0.50),5.096089944243431,12.533816359937193,0.0006510416666666666,du_pf_cognitive;edge_fs_soft;pf_fs_cognitive;pf_fs_soft,/home/rsadve1/Deep_Unfolding_FR3_20260319/results_twc/eval_all_20260327_204618,fer_input_sinr_db,sweep_value_to_fer_input_sinr_db
+selected_case,fer_input_sinr_min_db,fer_input_sinr_max_db,zero_error_display_floor,algorithms,source_eval_dir
+16-QAM (R=0.50),5.096089944243431,12.533816359937193,0.0006510416666666666,du_pf_cognitive;edge_fs_soft;pf_fs_cognitive;pf_fs_soft,/home/rsadve1/Deep_Unfolding_FR3_20260319/results_twc/eval_all_20260327_204618

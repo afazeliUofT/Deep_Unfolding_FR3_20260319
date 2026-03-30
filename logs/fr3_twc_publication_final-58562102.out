@@ -1,0 +1,6 @@
+ROLLOUT_OK root=results_twc/publication_convergence_rollout_20260329_211844
+ROLLOUT_INFO trained_layers=20 continued_layers=56
+ROLLOUT_ROWS summary_mean=3 history_mean=168
+Saved publication-level figures to: results_twc/Publication_Level_Final
+EXPORT_OK csv_dir=results_twc/Publication_Level_Final/csv_data
+PUBLICATION_LEVEL_FINAL_OK
